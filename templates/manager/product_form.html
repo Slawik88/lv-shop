@@ -1,0 +1,61 @@
+{% extends "manager/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block manager_content %}
+<div class="mb-5">
+  <a href="{% url 'manager:product_list' %}" class="text-sm hover:underline" style="color:#bc8a54;">← Товары</a>
+</div>
+
+<div class="max-w-xl">
+  <h1 class="text-2xl font-bold mb-6" style="color:#3d3028;">{{ title }}</h1>
+
+  <div class="rounded-2xl border shadow-sm overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+    <form method="post" enctype="multipart/form-data" class="p-6">
+      {% csrf_token %}
+      {% for field in form %}
+        {% if field.field.widget.input_type == 'checkbox' %}
+        <div class="mb-4 flex items-center gap-2">
+          {{ field }} <label for="{{ field.id_for_label }}" class="text-sm cursor-pointer" style="color:#5a3b24;">{{ field.label }}</label>
+          {% for error in field.errors %}<p class="text-xs" style="color:#c0392b;">{{ error }}</p>{% endfor %}
+        </div>
+        {% else %}
+        <div class="mb-4">
+          <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1.5" style="color:#5a3b24;">
+            {{ field.label }}{% if field.field.required %} <span style="color:#c0392b;">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% for error in field.errors %}<p class="text-xs mt-1" style="color:#c0392b;">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      {% if form.non_field_errors %}
+        <div class="rounded-lg px-4 py-3 text-sm mb-4" style="background:#fef2f2;color:#991b1b;border:1px solid #fec5c5;">
+          {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit"
+                class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white shadow transition hover:shadow-md"
+                style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+          {{ action }}
+        </button>
+        {% if object %}
+        <a href="{% url 'manager:product_options' object.slug %}"
+           class="px-4 py-2.5 rounded-xl text-sm border transition"
+           style="background:#fdf3e3;border-color:#e0cdb8;color:#5a3b24;">
+          ⚙ Опции конфигуратора
+        </a>
+        {% endif %}
+        <a href="{% url 'manager:product_list' %}"
+           class="px-4 py-2.5 rounded-xl text-sm border transition ml-auto"
+           style="background:#fffcf8;border-color:#e0cdb8;color:#7a6050;">
+          Отмена
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

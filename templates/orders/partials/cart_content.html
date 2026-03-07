@@ -1,0 +1,88 @@
+{% comment %}
+Reusable cart content block — used by both cart.html and HTMX update_quantity response.
+Receives: cart (list of dicts with line_total key), total
+{% endcomment %}
+{% if cart %}
+<div class="rounded-2xl overflow-hidden" id="cart-container"
+     style="background:#fffcf8; border:1px solid #e8ddd1; box-shadow:0 2px 12px rgba(90,59,36,.07);">
+  <table class="w-full">
+    <thead style="background:#fdf3e3; border-bottom:1px solid #e8ddd1;">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style="color:#8a5c36;">Товар</th>
+        <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider" style="color:#8a5c36;">Кол-во</th>
+        <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider" style="color:#8a5c36;">Цена</th>
+        <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider" style="color:#8a5c36;">Сумма</th>
+        <th class="px-6 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cart %}
+      <tr style="border-bottom:1px solid #ede5da;">
+        <td class="px-6 py-4">
+          <div class="font-medium" style="color:#3d3028;">{{ item.product_name }}</div>
+          {% if item.configuration.texts %}
+          <div class="text-xs mt-1" style="color:#b09070;">
+            {% for key, value in item.configuration.texts.items %}{{ value }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </div>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-center">
+          <form method="post"
+                action="{% url 'orders:update_quantity' forloop.counter0 %}"
+                hx-post="{% url 'orders:update_quantity' forloop.counter0 %}"
+                hx-target="#cart-wrapper"
+                hx-swap="innerHTML"
+                hx-trigger="change">
+            {% csrf_token %}
+            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="99"
+                   class="w-16 text-center rounded-lg text-sm font-medium"
+                   style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;" />
+          </form>
+        </td>
+        <td class="px-6 py-4 text-right text-sm" style="color:#7a6050;">{{ item.price }} ₽</td>
+        <td class="px-6 py-4 text-right font-bold" style="color:#3d3028;">{{ item.line_total }} ₽</td>
+        <td class="px-6 py-4 text-right">
+          <form method="post" action="{% url 'orders:remove_from_cart' forloop.counter0 %}">
+            {% csrf_token %}
+            <button type="submit" title="Удалить"
+                    class="p-1.5 rounded-lg hover:bg-red-50 transition-colors" style="color:#c9836a;">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="px-6 py-4 flex items-center justify-between" style="border-top:2px solid #e8ddd1; background:#fdf8f3;">
+    <span class="text-base font-medium" style="color:#7a6050;">Итого:</span>
+    <span class="text-2xl font-bold" style="color:#3d3028;">{{ total }} ₽</span>
+  </div>
+</div>
+
+<div class="mt-5 flex justify-end">
+  <a href="{% url 'orders:checkout' %}"
+     class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-white shadow-md hover:shadow-lg transition-shadow"
+     style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+    Оформить заказ
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+    </svg>
+  </a>
+</div>
+
+{% else %}
+<div class="text-center py-20 rounded-2xl"
+     style="background:#fffcf8; border:1px solid #e8ddd1;">
+  <div class="text-5xl mb-4">🛒</div>
+  <p class="text-lg font-medium mb-2" style="color:#7a6050;">Корзина пуста</p>
+  <p class="text-sm mb-6" style="color:#b09070;">Добавьте товары из каталога</p>
+  <a href="{% url 'products:home' %}"
+     class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white"
+     style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+    В каталог
+  </a>
+</div>
+{% endif %}

@@ -1,0 +1,6 @@
+<div class="flex items-center gap-2 text-sm">
+  <span class="text-green-600 font-medium">✓ Добавлено</span>
+  <a href="{% url 'orders:cart' %}" class="text-brand-700 hover:underline">
+    Корзина ({{ cart|length }})
+  </a>
+</div>

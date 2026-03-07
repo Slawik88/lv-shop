@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Заказ оформлен{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto text-center py-12">
+
+  {# Success icon #}
+  <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-5" style="background:#fdf3e3;">
+    <svg class="w-10 h-10" style="color:#bc8a54;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>
+  </div>
+
+  <h1 class="text-3xl font-bold mb-2" style="color:#3d3028;">Спасибо за заказ!</h1>
+  <p class="mb-6 text-sm" style="color:#7a6050;">
+    Номер вашего заказа:
+    <span class="font-mono font-semibold px-2 py-0.5 rounded-md" style="background:#fdf3e3;color:#5a3b24;">{{ order.id }}</span>
+  </p>
+
+  <div class="rounded-2xl shadow-md border text-left mb-6 overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+    {# Header #}
+    <div class="px-6 py-4 border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
+      <h2 class="font-semibold text-base" style="color:#3d3028;">Детали заказа</h2>
+    </div>
+
+    {# Customer info #}
+    <div class="px-6 py-4 grid grid-cols-2 gap-4 text-sm border-b" style="border-color:#f0e6d8;">
+      <div>
+        <span class="text-xs uppercase tracking-wide" style="color:#b09070;">Имя</span>
+        <p class="font-medium mt-0.5" style="color:#3d3028;">{{ order.customer_name }}</p>
+      </div>
+      <div>
+        <span class="text-xs uppercase tracking-wide" style="color:#b09070;">Email</span>
+        <p class="font-medium mt-0.5" style="color:#3d3028;">{{ order.customer_email }}</p>
+      </div>
+      <div>
+        <span class="text-xs uppercase tracking-wide" style="color:#b09070;">Телефон</span>
+        <p class="font-medium mt-0.5" style="color:#3d3028;">{{ order.customer_phone|default:"—" }}</p>
+      </div>
+      <div>
+        <span class="text-xs uppercase tracking-wide" style="color:#b09070;">Статус</span>
+        <p class="font-medium mt-0.5">
+          <span class="px-2 py-0.5 text-xs rounded-full" style="background:#fdf3e3;color:#8a5c36;">{{ order.get_status_display }}</span>
+        </p>
+      </div>
+    </div>
+
+    {# Items #}
+    <div class="divide-y" style="divide-color:#f0e6d8;">
+      {% for item in order.items.all %}
+      <div class="px-6 py-3 flex justify-between text-sm" style="border-color:#f0e6d8;">
+        <span style="color:#5a3b24;">{{ item.product_name }} <span style="color:#b09070;">× {{ item.quantity }}</span></span>
+        <span class="font-semibold" style="color:#3d3028;">{{ item.price }} ₽</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Total #}
+    <div class="px-6 py-4 flex justify-between items-center border-t" style="border-color:#e8ddd1;background:#fdf3e3;">
+      <span class="font-semibold text-sm" style="color:#5a3b24;">Итого:</span>
+      <span class="font-bold text-xl" style="color:#3d3028;">{{ order.total_price }} ₽</span>
+    </div>
+  </div>
+
+  <a href="{% url 'products:home' %}"
+     class="inline-flex items-center gap-2 text-sm font-medium transition-colors"
+     style="color:#bc8a54;">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+    Вернуться в каталог
+  </a>
+</div>
+{% endblock %}

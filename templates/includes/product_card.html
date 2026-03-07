@@ -1,0 +1,29 @@
+<a href="{{ product.get_absolute_url }}"
+   class="group card-hover flex flex-col rounded-2xl overflow-hidden"
+   style="background:#fffcf8; border:1px solid #e8ddd1; box-shadow:0 2px 8px rgba(90,59,36,.06);">
+  {% if product.image and product.image.name %}
+  <div class="overflow-hidden h-48">
+    <img src="{{ product.image.url }}" alt="{{ product.name }}"
+         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+  </div>
+  {% else %}
+  <div class="h-48 flex items-center justify-center"
+       style="background:linear-gradient(135deg,#f7ecdf,#e8d5be);">
+    <svg class="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke-width="1" style="color:#d4b896;">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    </svg>
+  </div>
+  {% endif %}
+  <div class="p-4 flex flex-col flex-1">
+    <h3 class="font-semibold text-base leading-snug mb-1 group-hover:transition"
+        style="color:#3d3028;">{{ product.name }}</h3>
+    {% if product.description %}
+    <p class="text-xs leading-relaxed mb-3 flex-1" style="color:#9a7860;">{{ product.description|truncatewords:12 }}</p>
+    {% endif %}
+    <div class="flex items-center justify-between mt-auto pt-2" style="border-top:1px solid #ede5da;">
+      <span class="text-sm font-bold" style="color:#bc8a54;">от {{ product.base_price }} ₽</span>
+      <span class="text-xs font-medium px-2.5 py-1 rounded-lg"
+            style="background:#fdf3e3; color:#a06b34;">Настроить →</span>
+    </div>
+  </div>
+</a>

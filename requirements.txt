@@ -1,0 +1,7 @@
+django>=5.0,<7.0
+psycopg2>=2.9
+django-htmx>=1.17
+Pillow>=10.0
+reportlab>=4.0
+django-imagekit>=5.0
+gunicorn>=21.2

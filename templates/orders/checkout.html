@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Оформление заказа{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+  <div class="flex items-center gap-3 mb-7">
+    <a href="{% url 'orders:cart' %}" class="text-sm hover:underline" style="color:#bc8a54;">← Корзина</a>
+    <span style="color:#d4c4b4;">/</span>
+    <h1 class="text-2xl font-bold" style="color:#3d3028;">Оформление заказа</h1>
+  </div>
+
+  <!-- Order summary -->
+  <div class="rounded-2xl p-6 mb-6"
+       style="background:#fffcf8; border:1px solid #e8ddd1; box-shadow:0 2px 8px rgba(90,59,36,.06);">
+    <h2 class="font-semibold text-base mb-4 pb-3" style="color:#3d3028; border-bottom:1px solid #ede5da;">
+      Ваш заказ
+    </h2>
+    <div class="space-y-2">
+      {% for item in cart %}
+      <div class="flex justify-between items-center py-2" style="border-bottom:1px dashed #ede5da;">
+        <div>
+          <span class="font-medium text-sm" style="color:#3d3028;">{{ item.product_name }}</span>
+          <span class="text-xs ml-2" style="color:#b09070;">× {{ item.quantity }}</span>
+        </div>
+        <span class="font-semibold text-sm" style="color:#3d3028;">{{ item.line_total }} ₽</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="flex justify-between items-center pt-4 mt-2">
+      <span class="font-semibold" style="color:#5a3b24;">Итого:</span>
+      <span class="text-xl font-bold" style="color:#bc8a54;">{{ total }} ₽</span>
+    </div>
+  </div>
+
+  <!-- Checkout form -->
+  <form method="post" class="rounded-2xl p-6 space-y-5"
+        style="background:#fffcf8; border:1px solid #e8ddd1; box-shadow:0 2px 8px rgba(90,59,36,.06);">
+    {% csrf_token %}
+
+    <h2 class="font-semibold text-base pb-3" style="color:#3d3028; border-bottom:1px solid #ede5da;">
+      Контактные данные
+    </h2>
+
+    {% for field_id, field_label, field_type, required in field_list|default:"" %}{% endfor %}
+
+    <div>
+      <label for="name" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">Имя *</label>
+      <input type="text" id="name" name="name" required
+             class="w-full rounded-xl px-4 py-2.5 text-sm"
+             style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;" />
+    </div>
+
+    <div>
+      <label for="email" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">Email *</label>
+      <input type="email" id="email" name="email" required
+             class="w-full rounded-xl px-4 py-2.5 text-sm"
+             style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;" />
+    </div>
+
+    <div>
+      <label for="phone" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">Телефон</label>
+      <input type="tel" id="phone" name="phone"
+             class="w-full rounded-xl px-4 py-2.5 text-sm"
+             style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;" />
+    </div>
+
+    <div>
+      <label for="address" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">Адрес доставки</label>
+      <textarea id="address" name="address" rows="3"
+                class="w-full rounded-xl px-4 py-2.5 text-sm resize-none"
+                style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;"></textarea>
+    </div>
+
+    <div>
+      <label for="notes" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">Комментарий</label>
+      <textarea id="notes" name="notes" rows="2"
+                class="w-full rounded-xl px-4 py-2.5 text-sm resize-none"
+                style="border:1px solid #e0cdb8; background:#fdf8f3; color:#3d3028;"></textarea>
+    </div>
+
+    <button type="submit"
+            class="w-full py-3.5 px-6 rounded-xl font-semibold text-white text-base shadow-md hover:shadow-lg transition-shadow"
+            style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+      Подтвердить заказ ✓
+    </button>
+  </form>
+</div>
+{% endblock %}

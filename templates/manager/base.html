@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block extra_js %}
+<style>
+  .mgr-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    border: 1px solid #e0cdb8;
+    border-radius: 0.75rem;
+    background: #fdf8f3;
+    color: #3d3028;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .mgr-input:focus {
+    border-color: #bc8a54;
+    box-shadow: 0 0 0 3px rgba(188,138,84,.2);
+  }
+  select.mgr-input { appearance: auto; }
+  textarea.mgr-input { resize: vertical; }
+  .mgr-checkbox {
+    width: 1rem; height: 1rem;
+    border: 2px solid #e0cdb8;
+    border-radius: 0.25rem;
+    accent-color: #bc8a54;
+    cursor: pointer;
+  }
+</style>
+{% block manager_scripts %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-6 min-h-[calc(100vh-10rem)]">
+
+  {# ── Sidebar ── #}
+  <aside class="hidden lg:flex flex-col gap-1 w-52 flex-shrink-0">
+    <div class="rounded-2xl overflow-hidden shadow-sm border" style="background:#fffcf8;border-color:#e8ddd1;">
+      <div class="px-4 py-3 border-b text-xs font-bold uppercase tracking-widest" style="background:#fdf3e3;border-color:#e8ddd1;color:#8a5c36;">
+        Управление
+      </div>
+      <nav class="flex flex-col py-2">
+        {% url 'manager:dashboard' as url_dashboard %}
+        {% url 'manager:category_list' as url_cats %}
+        {% url 'manager:product_list' as url_prods %}
+        {% url 'manager:order_list' as url_orders %}
+        <a href="{{ url_dashboard }}"
+           class="flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+           style="{% if request.path == url_dashboard %}background:#fdf3e3;color:#5a3b24;font-weight:600;{% else %}color:#7a6050;{% endif %}">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Панель
+        </a>
+        <a href="{{ url_cats }}"
+           class="flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+           style="{% if url_cats in request.path %}background:#fdf3e3;color:#5a3b24;font-weight:600;{% else %}color:#7a6050;{% endif %}">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Категории
+        </a>
+        <a href="{{ url_prods }}"
+           class="flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+           style="{% if url_prods in request.path %}background:#fdf3e3;color:#5a3b24;font-weight:600;{% else %}color:#7a6050;{% endif %}">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          Товары
+        </a>
+        <a href="{{ url_orders }}"
+           class="flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+           style="{% if url_orders in request.path %}background:#fdf3e3;color:#5a3b24;font-weight:600;{% else %}color:#7a6050;{% endif %}">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Заказы
+        </a>
+      </nav>
+      <div class="border-t py-2" style="border-color:#e8ddd1;">
+        <a href="{% url 'products:home' %}"
+           class="flex items-center gap-2 px-4 py-2 text-xs transition-colors"
+           style="color:#b09070;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          На сайт
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  {# ── Main content ── #}
+  <main class="flex-1 min-w-0">
+    {% block manager_content %}{% endblock %}
+  </main>
+
+</div>
+{% endblock %}

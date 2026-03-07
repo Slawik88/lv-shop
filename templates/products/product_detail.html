@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+{# Breadcrumb #}
+<nav class="mb-6 flex items-center gap-2 text-sm" style="color:#9a7860;">
+  <a href="{% url 'products:home' %}" class="hover:underline" style="color:#bc8a54;">Главная</a>
+  <span>›</span>
+  <a href="{{ product.category.get_absolute_url }}" class="hover:underline" style="color:#bc8a54;">{{ product.category.name }}</a>
+  <span>›</span>
+  <span style="color:#7a6050;">{{ product.name }}</span>
+</nav>
+
+{# ------------------------------------------------------------------ #}
+{# Alpine.js configurator state                                        #}
+{# ------------------------------------------------------------------ #}
+<div x-data="configurator()" x-init="init()" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+  {# ============================== LEFT: WYSIWYG PREVIEW ============================== #}
+  <div class="sticky top-24 self-start space-y-4">
+
+    {# Preview card #}
+    <div class="rounded-2xl overflow-hidden shadow-lg border" style="background:#fffcf8;border-color:#e8ddd1;">
+      {# Toolbar #}
+      <div class="flex items-center justify-between px-4 py-2.5 border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" style="color:#bc8a54;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+          </svg>
+          <span class="text-xs font-semibold" style="color:#7a6050;">Редактор предпросмотра</span>
+        </div>
+        <div class="flex items-center gap-2">
+          {# Grid toggle #}
+          <button type="button"
+                  @click="toggleGrid()"
+                  :title="showGrid ? 'Скрыть сетку' : 'Показать сетку'"
+                  class="text-xs px-2.5 py-1 rounded-lg border transition-all"
+                  :style="showGrid
+                    ? 'background:#bc8a54;color:#fff;border-color:#8a5c36;'
+                    : 'background:#fffcf8;color:#9a7860;border-color:#e0cdb8;'"
+          >
+            <span x-text="showGrid ? '✓ Сетка' : '⊞ Сетка'"></span>
+          </button>
+          {# Download SVG #}
+          <button type="button"
+                  @click="downloadPreview()"
+                  title="Скачать превью"
+                  class="text-xs px-2.5 py-1 rounded-lg border transition-all"
+                  style="background:#fffcf8;color:#9a7860;border-color:#e0cdb8;">
+            ↓ SVG
+          </button>
+          {# Fullscreen #}
+          <button type="button"
+                  @click="openFullscreen()"
+                  title="Развернуть"
+                  class="text-xs px-2.5 py-1 rounded-lg border transition-all"
+                  style="background:#fffcf8;color:#9a7860;border-color:#e0cdb8;">
+            ⛶
+          </button>
+          {# Size badge #}
+          <span x-show="selectedSizeName"
+                class="text-xs px-2.5 py-1 rounded-lg border"
+                style="background:#fdf3e3;color:#8a5c36;border-color:#e0cdb8;"
+                x-text="selectedSizeName"
+                x-cloak></span>
+        </div>
+      </div>
+
+      {# Drag hint #}
+      <div class="px-4 py-1.5 border-b flex items-center gap-1.5" style="background:#fffaf5;border-color:#f0e6d8;">
+        <svg class="w-3 h-3 flex-shrink-0" style="color:#bc8a54;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"/>
+        </svg>
+        <p class="text-xs" style="color:#b09070;">Перетащите текст прямо на превью, чтобы изменить его положение</p>
+      </div>
+
+      {# SVG inline preview container #}
+      <div id="svg-preview-container" class="relative overflow-hidden" style="background:#f5ede2;min-height:320px;">
+        {# Loading spinner overlay #}
+        <div id="svg-loading-overlay"
+             class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-200"
+             style="background:rgba(245,237,226,.8);opacity:0;">
+          <svg class="animate-spin w-7 h-7" style="color:#bc8a54;" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </div>
+        {# SVG injected here #}
+        <div id="svg-wrapper" class="flex items-center justify-center" style="min-height:320px;transition:opacity .15s ease;">
+          <p class="text-sm" style="color:#b09070;">Загрузка редактора...</p>
+        </div>
+      </div>
+    </div>
+
+    {# Fullscreen modal #}
+    <div x-show="fullscreenOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(30,20,10,.75);"
+         @click.self="fullscreenOpen = false">
+      <div class="relative rounded-2xl overflow-hidden shadow-2xl" style="max-width:90vw;max-height:90vh;background:#fffcf8;">
+        <button @click="fullscreenOpen = false"
+                class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold shadow transition"
+                style="background:#fdf3e3;color:#8a5c36;border:1px solid #e0cdb8;">×</button>
+        <div id="svg-fullscreen-body" class="p-4" style="overflow:auto;max-height:88vh;"></div>
+      </div>
+    </div>
+
+    {# Reset positions button #}
+    <div x-show="Object.keys(textPositions).length > 0" x-cloak>
+      <button type="button"
+              @click="resetPositions()"
+              class="w-full text-xs py-2 px-4 rounded-lg border transition-all"
+              style="background:#fffcf8;color:#9a7860;border-color:#e0cdb8;">
+        ↩ Сбросить позиции текста
+      </button>
+    </div>
+
+    {# Price display (HTMX partial) #}
+    <div class="rounded-xl shadow border p-4" style="background:#fffcf8;border-color:#e8ddd1;">
+      <div id="price-display"
+           hx-get="{% url 'configurator:calculate_price' product.slug %}"
+           hx-trigger="load, options-changed from:body"
+           hx-include="#configurator-form"
+           hx-target="#price-display"
+           hx-swap="innerHTML">
+        <div class="flex items-center justify-between">
+          <span style="color:#7a6050;">Итого:</span>
+          <span class="text-2xl font-bold" style="color:#3d3028;">{{ product.base_price }} ₽</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ============================== RIGHT: FORM ============================== #}
+  <div>
+
+    <h1 class="text-3xl font-bold mb-1" style="color:#3d3028;">{{ product.name }}</h1>
+    {% if product.description %}
+    <p class="mb-4 text-sm leading-relaxed" style="color:#7a6050;">{{ product.description }}</p>
+    {% endif %}
+
+    {# ---- Sizes grid (toggle) ---- #}
+    {% if product.sizes.all %}
+    <div class="mb-6">
+      <button type="button"
+              @click="showSizes = !showSizes"
+              class="inline-flex items-center gap-2 text-sm font-semibold transition-colors"
+              style="color:#bc8a54;">
+        <span class="w-5 h-5 flex items-center justify-center rounded-md text-xs border" style="background:#fdf3e3;border-color:#e0cdb8;color:#8a5c36;">
+          <span x-text="showSizes ? '▲' : '▼'">▼</span>
+        </span>
+        <span x-text="showSizes ? 'Скрыть размеры' : 'Размеры изделий'">Размеры изделий</span>
+        {% with default_size=product.sizes.all|first %}
+        <span class="text-xs font-normal ml-1" style="color:#b09070;" x-show="!showSizes && selectedSizeName" x-cloak>
+          (<span x-text="selectedSizeName"></span>)
+        </span>
+        {% endwith %}
+      </button>
+
+      <div x-show="showSizes" x-cloak
+           x-transition:enter="transition ease-out duration-150"
+           x-transition:enter-start="opacity-0 -translate-y-1"
+           x-transition:enter-end="opacity-100 translate-y-0"
+           class="mt-3 rounded-xl overflow-hidden shadow-sm border"
+           style="border-color:#e8ddd1;">
+        <table class="w-full text-sm">
+          <thead class="border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
+            <tr>
+              <th class="px-4 py-2.5 text-left font-semibold" style="color:#7a6050;">Название</th>
+              <th class="px-4 py-2.5 text-center font-semibold" style="color:#7a6050;">Размеры</th>
+              <th class="px-4 py-2.5 text-right font-semibold" style="color:#7a6050;">Доплата</th>
+            </tr>
+          </thead>
+          <tbody style="background:#fffcf8;">
+            {% for size in product.sizes.all %}
+            <tr class="border-b last:border-0 cursor-pointer transition-colors"
+                style="border-color:#f0e6d8;"
+                :style="selectedSizeId === '{{ size.id }}' ? 'background:#fdf3e3;' : ''"
+                @click="selectSize('{{ size.id }}', '{{ size.name }}', {{ size.price_modifier }})">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 transition-all"
+                       :style="selectedSizeId === '{{ size.id }}'
+                         ? 'border-color:#bc8a54;background:#bc8a54;'
+                         : 'border-color:#c8b8a5;background:transparent;'">
+                  </div>
+                  <span class="font-medium" style="color:#3d3028;">{{ size.name }}</span>
+                  {% if size.is_default %}
+                  <span class="text-xs" style="color:#b09070;">(по умолч.)</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-4 py-3 text-center font-mono text-xs" style="color:#7a6050;">{{ size.dimensions_display }}</td>
+              <td class="px-4 py-3 text-right">
+                {% if size.price_modifier > 0 %}
+                  <span class="font-semibold text-xs px-2 py-0.5 rounded-full" style="background:#ecfdf5;color:#166534;">+{{ size.price_modifier }} ₽</span>
+                {% elif size.price_modifier < 0 %}
+                  <span class="font-semibold text-xs px-2 py-0.5 rounded-full" style="background:#fef2f2;color:#991b1b;">{{ size.price_modifier }} ₽</span>
+                {% else %}
+                  <span class="text-xs" style="color:#b09070;">Базовый</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <form id="configurator-form" @submit.prevent="saveAndAddToCart()">
+      {% csrf_token %}
+      {# Hidden: selected size id (managed by Alpine) #}
+      <input type="hidden" name="size_id" :value="selectedSizeId || ''">
+
+      {# ---- Attribute Groups (dynamic from DB) ---- #}
+      {% for group in product.attribute_groups.all %}
+      <div class="mb-6">
+        <label class="block text-sm font-semibold mb-2" style="color:#5a3b24;">
+          {{ group.name }}
+          {% if group.is_required %}<span style="color:#c0392b;">*</span>{% endif %}
+        </label>
+
+        {% if group.widget_type == 'radio' or group.widget_type == 'select' %}
+          {% if group.widget_type == 'radio' %}
+          <div class="flex flex-wrap gap-2">
+            {% for option in group.options.all %}
+            <label class="cursor-pointer">
+              <input type="radio"
+                     name="option_{{ group.id }}"
+                     value="{{ option.id }}"
+                     {% if option.is_default %}checked{% endif %}
+                     class="sr-only"
+                     @change="onRadioChange('{{ group.id }}', '{{ option.id }}')"
+              />
+              <div class="px-3.5 py-2 rounded-lg border-2 text-sm transition-all select-none"
+                   :style="isOptionSelected('{{ group.id }}', '{{ option.id }}')
+                     ? 'border-color:#bc8a54;background:#fdf3e3;color:#3d3028;font-weight:600;'
+                     : 'border-color:#e0cdb8;background:#fffcf8;color:#5a3b24;'">
+                {{ option.name }}
+                {% if option.price_modifier %}
+                  <span class="text-xs ml-1" style="color:#9a7860;">
+                    {% if option.price_modifier > 0 %}+{% endif %}{{ option.price_modifier }} ₽
+                  </span>
+                {% endif %}
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}
+          <select name="option_{{ group.id }}"
+                  @change="onOptionChange()"
+                  class="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 transition"
+                  style="background:#fdf8f3;border-color:#e0cdb8;color:#3d3028;">
+            {% for option in group.options.all %}
+            <option value="{{ option.id }}" {% if option.is_default %}selected{% endif %}>
+              {{ option.name }}
+              {% if option.price_modifier %}
+                ({% if option.price_modifier > 0 %}+{% endif %}{{ option.price_modifier }} ₽)
+              {% endif %}
+            </option>
+            {% endfor %}
+          </select>
+          {% endif %}
+
+        {% elif group.widget_type == 'color' %}
+        <div class="flex flex-wrap gap-3">
+          {% for option in group.options.all %}
+          <label class="cursor-pointer" title="{{ option.name }}{% if option.image %} (фото товара){% endif %}">
+            <input type="radio"
+                   name="option_{{ group.id }}"
+                   value="{{ option.id }}"
+                   {% if option.is_default %}checked{% endif %}
+                   class="sr-only"
+                   @change="onRadioChange('{{ group.id }}', '{{ option.id }}')"
+            />
+            <div class="relative w-9 h-9 rounded-full border-[3px] transition-all hover:scale-110"
+                 :style="isOptionSelected('{{ group.id }}', '{{ option.id }}')
+                   ? 'border-color:#bc8a54;box-shadow:0 0 0 3px rgba(188,138,84,.35);transform:scale(1.12);'
+                   : 'border-color:#e0cdb8;box-shadow:none;'"
+                 style="background:{{ option.color_hex|default:'#ccc' }};">
+              {# White check for selected #}
+              <svg x-show="isOptionSelected('{{ group.id }}', '{{ option.id }}')"
+                   class="absolute inset-0 m-auto w-4 h-4" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24">
+                <path d="M5 13l4 4L19 7"/>
+              </svg>
+              {% if option.image %}
+              {# Camera icon badge — option has its own product photo #}
+              <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                    style="background:#bc8a54;border:1.5px solid #fff;" title="Есть фото товара">
+                <svg class="w-2 h-2" fill="white" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              {% endif %}
+            </div>
+            <p class="text-center text-xs mt-0.5 truncate max-w-[2.5rem]" style="color:#9a7860;">{{ option.name }}</p>
+          </label>
+          {% endfor %}
+        </div>
+
+        {% elif group.widget_type == 'image' %}
+        <div class="grid grid-cols-3 gap-3">
+          {% for option in group.options.all %}
+          <label class="cursor-pointer">
+            <input type="radio"
+                   name="option_{{ group.id }}"
+                   value="{{ option.id }}"
+                   {% if option.is_default %}checked{% endif %}
+                   class="peer sr-only"
+                   @change="onOptionChange()"
+            />
+            <div class="rounded-xl overflow-hidden border-2 transition-all peer-checked:shadow-md"
+                 style="border-color:#e0cdb8;background:#fffcf8;">
+              {% if option.image %}
+              <img src="{{ option.image.url }}" alt="{{ option.name }}" class="w-full h-20 object-cover">
+              {% endif %}
+              <div class="p-2 text-xs text-center" style="color:#5a3b24;">{{ option.name }}</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {# ---- Text Fields (dynamic from DB) ---- #}
+      {% for tf in product.text_fields.all %}
+      <div class="mb-5">
+        <label for="text_{{ tf.id }}" class="block text-sm font-semibold mb-1.5" style="color:#5a3b24;">
+          {{ tf.label }}
+          {% if tf.is_required %}<span style="color:#c0392b;">*</span>{% endif %}
+        </label>
+        <input type="text"
+               id="text_{{ tf.id }}"
+               name="text_{{ tf.id }}"
+               maxlength="{{ tf.max_length }}"
+               placeholder="{{ tf.placeholder }}"
+               {% if tf.is_required %}required{% endif %}
+               class="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 transition"
+               style="background:#fdf8f3;border-color:#e0cdb8;color:#3d3028;"
+               @input.debounce.500ms="updatePreview()"
+        />
+        <p class="text-xs mt-1" style="color:#b09070;">Макс. {{ tf.max_length }} символов</p>
+      </div>
+      {% endfor %}
+
+      {# ---- Font selector (if fonts exist) ---- #}
+      <div x-show="fonts.length > 0" class="mb-6" x-cloak>
+        <label class="block text-sm font-semibold mb-1.5" style="color:#5a3b24;">Шрифт</label>
+        <select name="font"
+                x-model="selectedFont"
+                @change="updatePreview()"
+                class="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 transition"
+                style="background:#fdf8f3;border-color:#e0cdb8;color:#3d3028;">
+          <template x-for="f in fonts" :key="f.id">
+            <option :value="f.css_family" x-text="f.name" :style="'font-family:' + f.css_family"></option>
+          </template>
+        </select>
+      </div>
+
+      {# ---- Submit ---- #}
+      <div class="mt-8">
+        <button type="submit"
+                class="w-full py-3.5 px-8 rounded-xl font-bold text-base text-white shadow-md transition-all hover:shadow-xl hover:-translate-y-0.5"
+                style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+          <span x-show="!saving" class="flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            В корзину
+          </span>
+          <span x-show="saving" x-cloak class="flex items-center justify-center gap-2">
+            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Сохраняем...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  #svg-wrapper svg { display: block; width: 100%; height: auto; }
+  #svg-wrapper svg text[data-field-id] { cursor: move; user-select: none; }
+  #svg-wrapper svg text[data-field-id]:hover { outline: 1px dashed rgba(188,138,84,.7); outline-offset: 2px; }
+</style>
+<script>
+function configurator() {
+  return {
+    fonts: [],
+    selectedFont: '',
+    saving: false,
+    productSlug: '{{ product.slug }}',
+    showSizes: false,
+    showGrid: false,
+    fullscreenOpen: false,
+    textPositions: {},       // { fieldId: "x,y" } — customer drag overrides
+    selectedOptions: {},     // { groupId: optionId } — drives radio/color visual state
+    selectedSizeId: {% if product.sizes.all %}'{{ product.sizes.all.0.id }}'{% else %}null{% endif %},
+    selectedSizeName: {% if product.sizes.all %}'{{ product.sizes.all.0.name }}'{% else %}''{% endif %},
+    _fetchController: null,  // AbortController — cancels stale in-flight fetches
+
+    async init() {
+      // Seed default option selections from Django template so Alpine state matches HTML state
+      {% for group in product.attribute_groups.all %}
+        {% for option in group.options.all %}
+          {% if option.is_default %}
+          this.selectedOptions['{{ group.id }}'] = '{{ option.id }}';
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+
+      try {
+        const resp = await fetch('{% url "configurator:get_fonts" %}');
+        this.fonts = await resp.json();
+        if (this.fonts.length > 0) this.selectedFont = this.fonts[0].css_family;
+      } catch(e) { console.warn('Fonts not loaded', e); }
+
+      this.updatePreview();
+    },
+
+    /* Returns true when the given option is currently selected — used for Alpine :style bindings */
+    isOptionSelected(groupId, optionId) {
+      return String(this.selectedOptions[String(groupId)]) === String(optionId);
+    },
+
+    /* Called by radio/color @change — updates tracked state then refreshes */
+    onRadioChange(groupId, optionId) {
+      this.selectedOptions[String(groupId)] = String(optionId);
+      this.onOptionChange();
+    },
+
+    /* Build query params from form + font + drag positions */
+    buildParams() {
+      const form = document.getElementById('configurator-form');
+      const formData = new FormData(form);
+      if (this.selectedFont) formData.set('font', this.selectedFont);
+      if (this.showGrid)     formData.set('show_grid', '1');
+      for (const [fieldId, xyStr] of Object.entries(this.textPositions)) {
+        formData.set(`pos_${fieldId}`, xyStr);
+      }
+      const params = new URLSearchParams(formData);
+      params.delete('csrfmiddlewaretoken');
+      return params.toString();
+    },
+
+    /* Show/hide the loading spinner overlay */
+    _setLoading(on) {
+      const overlay = document.getElementById('svg-loading-overlay');
+      if (overlay) overlay.style.opacity = on ? '1' : '0';
+    },
+
+    /* Fetch SVG as text and inject it inline — uses wrapper div so overlay persists */
+    async loadPreviewInline() {
+      const wrapper = document.getElementById('svg-wrapper');
+      if (!wrapper) return;
+
+      // Cancel any previous still-in-flight request
+      if (this._fetchController) this._fetchController.abort();
+      this._fetchController = new AbortController();
+      this._setLoading(true);
+      wrapper.style.opacity = '0.4';
+
+      try {
+        const url = `/configurator/preview/${this.productSlug}.svg?${this.buildParams()}&_t=${Date.now()}`;
+        const resp = await fetch(url, { signal: this._fetchController.signal });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const svgText = await resp.text();
+        wrapper.innerHTML = svgText;
+        wrapper.style.opacity = '1';
+        this.setupDragHandles(wrapper);
+      } catch(e) {
+        if (e.name === 'AbortError') return;  // intentionally cancelled — not an error
+        console.error('Preview error:', e);
+        wrapper.style.opacity = '1';
+        wrapper.innerHTML = `<div style="color:#b09070;font-size:.8rem;padding:2rem;text-align:center;">Ошибка загрузки предпросмотра<br><small>${e.message}</small></div>`;
+      } finally {
+        this._setLoading(false);
+        this._fetchController = null;
+      }
+    },
+
+    /* Download the current SVG preview as a file */
+    downloadPreview() {
+      const wrapper = document.getElementById('svg-wrapper');
+      const svg = wrapper ? wrapper.querySelector('svg') : null;
+      if (!svg) return;
+      const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.productSlug}-preview.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+
+    /* Open the SVG preview in a fullscreen modal */
+    openFullscreen() {
+      const wrapper = document.getElementById('svg-wrapper');
+      const svg = wrapper ? wrapper.querySelector('svg') : null;
+      const body = document.getElementById('svg-fullscreen-body');
+      if (!svg || !body) return;
+      // Clone SVG and scale it up
+      const clone = svg.cloneNode(true);
+      clone.removeAttribute('width');
+      clone.removeAttribute('height');
+      clone.style.width = '100%';
+      clone.style.height = 'auto';
+      clone.style.maxWidth = '800px';
+      // Remove drag cursors in fullscreen
+      clone.querySelectorAll('text[data-field-id]').forEach(t => t.style.cursor = 'default');
+      body.innerHTML = '';
+      body.appendChild(clone);
+      this.fullscreenOpen = true;
+    },
+
+    /* Attach drag listeners to all SVG text elements with data-field-id */
+    setupDragHandles(wrapper) {
+      const svg = wrapper.querySelector('svg');
+      if (!svg) return;
+      svg.querySelectorAll('text[data-field-id]').forEach(el => {
+        el.addEventListener('mousedown', e => this.startDrag(e, el, svg), { passive: false });
+        el.addEventListener('touchstart', e => this.startDragTouch(e, el, svg), { passive: false });
+      });
+    },
+
+    /* Convert browser client coords → SVG viewBox coordinate space */
+    _clientToSVG(clientX, clientY, svg) {
+      const vb   = svg.viewBox.baseVal;
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: Math.round((clientX - rect.left) * (vb.width  / rect.width)),
+        y: Math.round((clientY - rect.top)  * (vb.height / rect.height)),
+      };
+    },
+
+    startDrag(e, el, svg) {
+      e.preventDefault();
+      const fieldId = el.getAttribute('data-field-id');
+      const start   = this._clientToSVG(e.clientX, e.clientY, svg);
+      const origX   = parseFloat(el.getAttribute('x')) || 0;
+      const origY   = parseFloat(el.getAttribute('y')) || 0;
+      const offX    = start.x - origX;
+      const offY    = start.y - origY;
+
+      const onMove = ev => {
+        const p  = this._clientToSVG(ev.clientX, ev.clientY, svg);
+        const nx = p.x - offX;
+        const ny = p.y - offY;
+        el.setAttribute('x', nx);
+        el.setAttribute('y', ny);
+        el.querySelectorAll('tspan').forEach(ts => ts.setAttribute('x', nx));
+        this.textPositions = { ...this.textPositions, [fieldId]: `${nx},${ny}` };
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    },
+
+    startDragTouch(e, el, svg) {
+      if (!e.touches[0]) return;
+      e.preventDefault();
+      const fieldId = el.getAttribute('data-field-id');
+      const start   = this._clientToSVG(e.touches[0].clientX, e.touches[0].clientY, svg);
+      const origX   = parseFloat(el.getAttribute('x')) || 0;
+      const origY   = parseFloat(el.getAttribute('y')) || 0;
+      const offX    = start.x - origX;
+      const offY    = start.y - origY;
+
+      const onMove = ev => {
+        if (!ev.touches[0]) return;
+        const p  = this._clientToSVG(ev.touches[0].clientX, ev.touches[0].clientY, svg);
+        const nx = p.x - offX;
+        const ny = p.y - offY;
+        el.setAttribute('x', nx);
+        el.setAttribute('y', ny);
+        el.querySelectorAll('tspan').forEach(ts => ts.setAttribute('x', nx));
+        this.textPositions = { ...this.textPositions, [fieldId]: `${nx},${ny}` };
+      };
+      const onEnd = () => {
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+      };
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    },
+
+    toggleGrid() {
+      this.showGrid = !this.showGrid;
+      this.loadPreviewInline();
+    },
+
+    resetPositions() {
+      this.textPositions = {};
+      this.loadPreviewInline();
+    },
+
+    updatePreview() { this.loadPreviewInline(); },
+
+    onOptionChange() {
+      this.updatePreview();
+      document.body.dispatchEvent(new CustomEvent('options-changed'));
+    },
+
+    selectSize(id, name, priceModifier) {
+      this.selectedSizeId   = id;
+      this.selectedSizeName = name;
+      this.showSizes        = false;
+      this.$nextTick(() => document.body.dispatchEvent(new CustomEvent('options-changed')));
+    },
+
+    async saveAndAddToCart() {
+      this.saving = true;
+      const form     = document.getElementById('configurator-form');
+      const formData = new FormData(form);
+
+      const config = {
+        options: {}, texts: {}, font: this.selectedFont,
+        size_id: this.selectedSizeId,
+        text_positions: this.textPositions,
+      };
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('option_'))      config.options[key.replace('option_', '')] = value;
+        else if (key.startsWith('text_'))   config.texts[key.replace('text_', '')]   = value;
+      }
+
+      try {
+        const csrfToken = document.querySelector('#configurator-form [name=csrfmiddlewaretoken]')?.value
+                       || '{{ csrf_token }}';
+        const saveResp = await fetch(`/configurator/save/${this.productSlug}/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify(config),
+        });
+        const saveData = await saveResp.json();
+        if (saveData.error) { alert('Ошибка: ' + saveData.error); this.saving = false; return; }
+
+        const cartForm = new FormData();
+        cartForm.append('configuration_id', saveData.id);
+        cartForm.append('quantity', '1');
+        await fetch('{% url "orders:add_to_cart" %}', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: cartForm,
+        });
+        window.location.href = '{% url "orders:cart" %}';
+      } catch(e) {
+        console.error(e);
+        alert('Произошла ошибка при сохранении');
+      } finally {
+        this.saving = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "manager/base.html" %}
+
+{% block title %}Товары{% endblock %}
+
+{% block manager_content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold" style="color:#3d3028;">Товары</h1>
+  <a href="{% url 'manager:product_create' %}"
+     class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow transition hover:shadow-md"
+     style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+    + Новый товар
+  </a>
+</div>
+
+{% if products %}
+<div class="rounded-2xl border overflow-hidden shadow-sm" style="background:#fffcf8;border-color:#e8ddd1;">
+  <table class="w-full text-sm">
+    <thead class="border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
+      <tr>
+        <th class="px-5 py-3 text-left font-semibold" style="color:#7a6050;">Товар</th>
+        <th class="px-5 py-3 text-left font-semibold hidden sm:table-cell" style="color:#7a6050;">Категория</th>
+        <th class="px-5 py-3 text-right font-semibold" style="color:#7a6050;">Цена</th>
+        <th class="px-5 py-3 text-center font-semibold" style="color:#7a6050;">Статус</th>
+        <th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y" style="divide-color:#f0e6d8;">
+      {% for product in products %}
+      <tr class="hover:bg-[#fffaf5] transition-colors">
+        <td class="px-5 py-3">
+          <p class="font-medium" style="color:#3d3028;">{{ product.name }}</p>
+          <p class="text-xs font-mono mt-0.5" style="color:#b09070;">{{ product.slug }}</p>
+        </td>
+        <td class="px-5 py-3 hidden sm:table-cell" style="color:#7a6050;">{{ product.category.name }}</td>
+        <td class="px-5 py-3 text-right font-semibold" style="color:#3d3028;">{{ product.base_price }} ₽</td>
+        <td class="px-5 py-3 text-center">
+          {% if product.is_active %}
+            <span class="text-xs px-2 py-0.5 rounded-full" style="background:#ecfdf5;color:#166534;">Активен</span>
+          {% else %}
+            <span class="text-xs px-2 py-0.5 rounded-full" style="background:#fef2f2;color:#991b1b;">Скрыт</span>
+          {% endif %}
+        </td>
+        <td class="px-5 py-3 text-right">
+          <div class="flex items-center justify-end gap-1.5">
+            <a href="{% url 'manager:product_options' product.slug %}"
+               title="Параметры конфигуратора"
+               class="text-xs px-2.5 py-1 rounded-lg border transition hover:shadow-sm"
+               style="background:#fdf3e3;border-color:#e0cdb8;color:#8a5c36;">⚙ Опции</a>
+            <a href="{% url 'manager:product_edit' product.slug %}"
+               class="text-xs px-2.5 py-1 rounded-lg border transition hover:shadow-sm"
+               style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">Изменить</a>
+            <a href="{{ product.get_absolute_url }}" target="_blank"
+               title="Открыть на сайте"
+               class="text-xs px-2.5 py-1 rounded-lg border transition hover:shadow-sm"
+               style="background:#fffcf8;border-color:#e0cdb8;color:#b09070;">↗</a>
+            <a href="{% url 'manager:product_delete' product.slug %}"
+               class="text-xs px-2.5 py-1 rounded-lg border transition hover:shadow-sm"
+               style="background:#fff5f5;border-color:#fec5c5;color:#c0392b;">Удалить</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-16 rounded-2xl border" style="background:#fffcf8;border-color:#e8ddd1;">
+  <p class="text-sm mb-3" style="color:#b09070;">Товаров пока нет.</p>
+  <a href="{% url 'manager:product_create' %}" class="text-sm font-medium hover:underline" style="color:#bc8a54;">Создать первый →</a>
+</div>
+{% endif %}
+{% endblock %}

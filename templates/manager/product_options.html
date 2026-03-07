@@ -1,0 +1,190 @@
+{% extends "manager/base.html" %}
+
+{% block title %}Опции: {{ product.name }}{% endblock %}
+
+{% block manager_content %}
+<div class="mb-4 flex items-center gap-3">
+  <a href="{% url 'manager:product_list' %}" class="text-sm hover:underline" style="color:#bc8a54;">← Товары</a>
+  <span style="color:#e0cdb8;">/</span>
+  <span class="text-sm" style="color:#7a6050;">{{ product.name }}</span>
+</div>
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold" style="color:#3d3028;">Опции конфигуратора</h1>
+  <div class="flex items-center gap-2">
+    <a href="{% url 'manager:product_edit' product.slug %}"
+       class="text-xs px-3 py-1.5 rounded-lg border transition"
+       style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">✏ Редактировать товар</a>
+    <a href="{{ product.get_absolute_url }}" target="_blank"
+       class="text-xs px-3 py-1.5 rounded-lg border transition"
+       style="background:#fdf3e3;border-color:#e0cdb8;color:#8a5c36;">↗ На сайте</a>
+  </div>
+</div>
+
+{# ======================== ATTRIBUTE GROUPS ======================== #}
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold text-base" style="color:#3d3028;">Группы атрибутов</h2>
+    <a href="{% url 'manager:attribute_group_create' product.slug %}"
+       class="text-xs px-3 py-1.5 rounded-lg text-white shadow transition"
+       style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">+ Добавить группу</a>
+  </div>
+
+  {% if product.attribute_groups.all %}
+  <div class="space-y-3">
+    {% for group in product.attribute_groups.all %}
+    <div class="rounded-xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+      {# Group header #}
+      <div class="flex items-center justify-between px-4 py-3 border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-sm" style="color:#3d3028;">{{ group.name }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full" style="background:#e8ddd1;color:#7a6050;">{{ group.get_widget_type_display }}</span>
+          {% if group.is_required %}<span class="text-xs" style="color:#c0392b;">обяз.</span>{% endif %}
+        </div>
+        <div class="flex items-center gap-1.5">
+          <a href="{% url 'manager:attribute_option_create' product.slug group.id %}"
+             class="text-xs px-2.5 py-1 rounded-lg border transition"
+             style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">+ Опция</a>
+          <a href="{% url 'manager:attribute_group_edit' product.slug group.id %}"
+             class="text-xs px-2.5 py-1 rounded-lg border transition"
+             style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">✏</a>
+          <a href="{% url 'manager:attribute_group_delete' product.slug group.id %}"
+             class="text-xs px-2.5 py-1 rounded-lg border transition"
+             style="background:#fff5f5;border-color:#fec5c5;color:#c0392b;">✕</a>
+        </div>
+      </div>
+
+      {# Options #}
+      {% if group.options.all %}
+      <div class="divide-y" style="divide-color:#f0e6d8;">
+        {% for option in group.options.all %}
+        <div class="flex items-center justify-between px-4 py-2.5 text-sm">
+          <div class="flex items-center gap-3">
+            {% if option.color_hex %}
+              <span class="w-5 h-5 rounded-full border flex-shrink-0" style="background:{{ option.color_hex }};border-color:#e8ddd1;"></span>
+            {% endif %}
+            <span style="color:#3d3028;">{{ option.name }}</span>
+            {% if option.is_default %}<span class="text-xs" style="color:#bc8a54;">(по умолч.)</span>{% endif %}
+          </div>
+          <div class="flex items-center gap-3">
+            {% if option.price_modifier != 0 %}
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="{% if option.price_modifier > 0 %}background:#ecfdf5;color:#166534;{% else %}background:#fef2f2;color:#991b1b;{% endif %}">
+                {% if option.price_modifier > 0 %}+{% endif %}{{ option.price_modifier }} ₽
+              </span>
+            {% endif %}
+            <div class="flex items-center gap-1">
+              <a href="{% url 'manager:attribute_option_edit' product.slug group.id option.id %}"
+                 class="text-xs px-2 py-0.5 rounded border transition"
+                 style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">✏</a>
+              <a href="{% url 'manager:attribute_option_delete' product.slug group.id option.id %}"
+                 class="text-xs px-2 py-0.5 rounded border transition"
+                 style="background:#fff5f5;border-color:#fec5c5;color:#c0392b;">✕</a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="px-4 py-3 text-xs" style="color:#b09070;">Опций пока нет.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-xl border px-4 py-6 text-center" style="background:#fffcf8;border-color:#e8ddd1;">
+    <p class="text-sm" style="color:#b09070;">Нет групп атрибутов.</p>
+    <a href="{% url 'manager:attribute_group_create' product.slug %}" class="text-xs mt-1 inline-block hover:underline" style="color:#bc8a54;">Добавить →</a>
+  </div>
+  {% endif %}
+</section>
+
+{# ======================== TEXT FIELDS ======================== #}
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold text-base" style="color:#3d3028;">Текстовые поля</h2>
+    <a href="{% url 'manager:text_field_create' product.slug %}"
+       class="text-xs px-3 py-1.5 rounded-lg text-white shadow transition"
+       style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">+ Добавить поле</a>
+  </div>
+
+  {% if product.text_fields.all %}
+  <div class="rounded-xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+    <div class="divide-y" style="divide-color:#f0e6d8;">
+      {% for tf in product.text_fields.all %}
+      <div class="flex items-center justify-between px-4 py-3 text-sm">
+        <div>
+          <span class="font-medium" style="color:#3d3028;">{{ tf.label }}</span>
+          {% if tf.is_required %}<span class="text-xs ml-1.5" style="color:#c0392b;">обяз.</span>{% endif %}
+          <p class="text-xs mt-0.5" style="color:#b09070;">
+            Позиция: ({{ tf.preview_x }}, {{ tf.preview_y }}) · {{ tf.preview_font_size }}px · {{ tf.preview_font_family }}
+          </p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <a href="{% url 'manager:text_field_edit' product.slug tf.id %}"
+             class="text-xs px-2.5 py-1 rounded-lg border transition"
+             style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">✏ Изменить</a>
+          <a href="{% url 'manager:text_field_delete' product.slug tf.id %}"
+             class="text-xs px-2.5 py-1 rounded-lg border transition"
+             style="background:#fff5f5;border-color:#fec5c5;color:#c0392b;">✕</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="rounded-xl border px-4 py-6 text-center" style="background:#fffcf8;border-color:#e8ddd1;">
+    <p class="text-sm" style="color:#b09070;">Нет текстовых полей.</p>
+    <a href="{% url 'manager:text_field_create' product.slug %}" class="text-xs mt-1 inline-block hover:underline" style="color:#bc8a54;">Добавить →</a>
+  </div>
+  {% endif %}
+</section>
+
+{# ======================== SIZES ======================== #}
+<section>
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-semibold text-base" style="color:#3d3028;">Размеры</h2>
+    <a href="{% url 'manager:size_create' product.slug %}"
+       class="text-xs px-3 py-1.5 rounded-lg text-white shadow transition"
+       style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">+ Добавить размер</a>
+  </div>
+
+  {% if product.sizes.all %}
+  <div class="rounded-xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+    <div class="divide-y" style="divide-color:#f0e6d8;">
+      {% for size in product.sizes.all %}
+      <div class="flex items-center justify-between px-4 py-3 text-sm">
+        <div class="flex items-center gap-3">
+          <span class="font-medium" style="color:#3d3028;">{{ size.name }}</span>
+          {% if size.is_default %}<span class="text-xs" style="color:#bc8a54;">(по умолч.)</span>{% endif %}
+          <span class="font-mono text-xs" style="color:#7a6050;">{{ size.dimensions_display }}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          {% if size.price_modifier != 0 %}
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style="{% if size.price_modifier > 0 %}background:#ecfdf5;color:#166534;{% else %}background:#fef2f2;color:#991b1b;{% endif %}">
+              {% if size.price_modifier > 0 %}+{% endif %}{{ size.price_modifier }} ₽
+            </span>
+          {% endif %}
+          <div class="flex items-center gap-1.5">
+            <a href="{% url 'manager:size_edit' product.slug size.id %}"
+               class="text-xs px-2.5 py-1 rounded-lg border transition"
+               style="background:#fffcf8;border-color:#e0cdb8;color:#5a3b24;">✏ Изменить</a>
+            <a href="{% url 'manager:size_delete' product.slug size.id %}"
+               class="text-xs px-2.5 py-1 rounded-lg border transition"
+               style="background:#fff5f5;border-color:#fec5c5;color:#c0392b;">✕</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="rounded-xl border px-4 py-6 text-center" style="background:#fffcf8;border-color:#e8ddd1;">
+    <p class="text-sm" style="color:#b09070;">Нет вариантов размеров.</p>
+    <a href="{% url 'manager:size_create' product.slug %}" class="text-xs mt-1 inline-block hover:underline" style="color:#bc8a54;">Добавить →</a>
+  </div>
+  {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,26 @@
+{% comment %}
+Renders a single Django form field with label, input, and errors.
+Usage: {% include "manager/_field.html" with field=form.name %}
+{% endcomment %}
+<div class="mb-4">
+  <label for="{{ field.id_for_label }}" class="block text-sm font-semibold mb-1.5" style="color:#5a3b24;">
+    {{ field.label }}
+    {% if field.field.required %}<span style="color:#c0392b;"> *</span>{% endif %}
+  </label>
+  {% if field.field.widget.input_type == 'checkbox' %}
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      {{ field }}
+      <span class="text-sm" style="color:#7a6050;">{{ field.label }}</span>
+    </label>
+  {% else %}
+    {{ field }}
+  {% endif %}
+  {% if field.errors %}
+    {% for error in field.errors %}
+    <p class="text-xs mt-1" style="color:#c0392b;">{{ error }}</p>
+    {% endfor %}
+  {% endif %}
+  {% if field.help_text %}
+    <p class="text-xs mt-1" style="color:#b09070;">{{ field.help_text }}</p>
+  {% endif %}
+</div>
