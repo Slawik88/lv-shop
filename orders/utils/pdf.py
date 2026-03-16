@@ -3,6 +3,7 @@ PDF generation for production — creates a work order PDF for manufacturing.
 Uses ReportLab. All data comes from the Order/OrderItem/SavedConfiguration models.
 """
 import io
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
@@ -14,17 +15,62 @@ from reportlab.pdfbase.ttfonts import TTFont
 from orders.models import Order
 
 
+# ---------------------------------------------------------------------------
+# Регистрация шрифта с поддержкой кириллицы — берём из Windows-системных шрифтов
+# ---------------------------------------------------------------------------
+_FONT_REGISTERED = False
+_CYR_FONT = 'Helvetica'  # fallback — ASCII-only, заменим ниже при удаче
+
+
+def _register_cyrillic_font():
+    """Try to register a Cyrillic-capable TTF font once."""
+    global _FONT_REGISTERED, _CYR_FONT
+    if _FONT_REGISTERED:
+        return
+    _FONT_REGISTERED = True
+
+    # Порядок поиска: сначала шрифты в папке проекта, затем системные
+    candidates = []
+    # Windows
+    win_fonts = os.environ.get('WINDIR', 'C:\\Windows') + '\\Fonts'
+    candidates += [
+        os.path.join(win_fonts, 'arial.ttf'),
+        os.path.join(win_fonts, 'calibri.ttf'),
+        os.path.join(win_fonts, 'times.ttf'),
+    ]
+    # Linux
+    candidates += [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+    ]
+
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                font_name = 'CyrFont'
+                pdfmetrics.registerFont(TTFont(font_name, path))
+                _CYR_FONT = font_name
+                return
+            except Exception:
+                continue
+
+
 def generate_order_pdf(order: Order) -> io.BytesIO:
     """Generate a PDF work order for the given Order. Returns a BytesIO buffer."""
+    _register_cyrillic_font()
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm)
     styles = getSampleStyleSheet()
 
-    # Custom styles
+    # Custom styles with Cyrillic font
     title_style = ParagraphStyle(
         'OrderTitle', parent=styles['Heading1'], fontSize=18, spaceAfter=10,
+        fontName=_CYR_FONT,
     )
-    normal = styles['Normal']
+    normal = ParagraphStyle('OrderNormal', parent=styles['Normal'], fontName=_CYR_FONT)
+    heading2_style = ParagraphStyle('Heading2Cyr', parent=styles['Heading2'], fontName=_CYR_FONT)
+    heading3_style = ParagraphStyle('Heading3Cyr', parent=styles['Heading3'], fontName=_CYR_FONT)
 
     elements = []
 
@@ -52,7 +98,7 @@ def generate_order_pdf(order: Order) -> io.BytesIO:
     elements.append(Spacer(1, 10*mm))
 
     # Order items
-    elements.append(Paragraph('Позиции заказа', styles['Heading2']))
+    elements.append(Paragraph('Позиции заказа', heading2_style))
     elements.append(Spacer(1, 3*mm))
 
     items = order.items.all()
@@ -94,7 +140,7 @@ def generate_order_pdf(order: Order) -> io.BytesIO:
     # Notes
     if order.notes:
         elements.append(Spacer(1, 10*mm))
-        elements.append(Paragraph('Комментарий:', styles['Heading3']))
+        elements.append(Paragraph('Комментарий:', heading3_style))
         elements.append(Paragraph(order.notes, normal))
 
     doc.build(elements)

@@ -4,6 +4,10 @@ from . import views
 app_name = 'manager'
 
 urlpatterns = [
+    # Auth
+    path('login/',  views.manager_login,  name='login'),
+    path('logout/', views.manager_logout, name='logout'),
+
     # Dashboard
     path('', views.dashboard, name='dashboard'),
 
@@ -45,4 +49,9 @@ urlpatterns = [
     # Orders
     path('orders/', views.order_list, name='order_list'),
     path('orders/<uuid:pk>/', views.order_detail, name='order_detail'),
+
+    # Image Studio
+    path('image-studio/', views.image_studio, name='image_studio'),
+    path('image-studio/process/', views.image_studio_process, name='image_studio_process'),
+    path('image-studio/apply/', views.image_studio_apply, name='image_studio_apply'),
 ]

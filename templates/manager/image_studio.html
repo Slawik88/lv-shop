@@ -1,0 +1,689 @@
+{% extends "manager/base.html" %}
+{% block title %}Студия изображений{% endblock %}
+
+{% block manager_content %}
+<div x-data="studio()" @dragover.window.prevent @drop.window.prevent>
+  {% csrf_token %}
+
+  {# ── Page header ── #}
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold" style="color:#3d3028;">Студия изображений</h1>
+      <p class="text-xs mt-0.5" style="color:#b09070;">
+        Обрежьте, скорректируйте и примените изображение прямо к товару или опции
+      </p>
+    </div>
+    <a href="{% url 'manager:product_list' %}"
+       class="text-xs px-3 py-1.5 rounded-lg border transition-all"
+       style="background:#fdf8f3;color:#7a6050;border-color:#e0cdb8;">
+      ← К товарам
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-[400px,1fr] gap-6 items-start">
+
+    {# ════════════════════════ LEFT: CONTROLS ════════════════════════ #}
+    <div class="space-y-4">
+
+      {# ── Upload ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Загрузить изображение
+        </div>
+        <div class="p-4">
+          <div @dragenter.prevent="dragging=true"
+               @dragleave.prevent="dragging=false"
+               @dragover.prevent
+               @drop.prevent="handleDrop($event)"
+               @click="$refs.fileInput.click()"
+               class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all py-7"
+               :style="dragging
+                 ? 'border-color:#bc8a54;background:#fdf3e3;'
+                 : 'border-color:#e0cdb8;background:#fdf8f3;'">
+            <svg class="w-8 h-8 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 :style="`color:${dragging ? '#bc8a54' : '#c8b098'}`">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <p class="text-sm font-medium" style="color:#7a6050;">Перетащите или нажмите</p>
+            <p class="text-xs" style="color:#b09070;">PNG, JPG, WebP, GIF &bull; до 20 МБ</p>
+          </div>
+          <input type="file" x-ref="fileInput" accept="image/*" class="hidden"
+                 @change="handleFileInput($event)">
+
+          <div x-show="origName" x-cloak
+               class="mt-3 px-3 py-2 rounded-lg flex items-center gap-2 text-xs"
+               style="background:#f0ece0;color:#6a4c2c;">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="truncate" x-text="`${origName}  ${origWidth ? '— '+origWidth+'×'+origHeight+' px' : ''}`"></span>
+          </div>
+        </div>
+      </div>
+
+      {# ── Size & crop ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+          </svg>
+          Размер и кадрирование
+        </div>
+        <div class="p-4 space-y-4">
+
+          {# Presets #}
+          <div>
+            <p class="text-xs font-semibold mb-2" style="color:#7a6050;">Пресеты конфигуратора</p>
+            <div class="grid grid-cols-3 gap-1.5">
+              <template x-for="p in presets" :key="p.label">
+                <button type="button"
+                        @click="applyPreset(p.w, p.h)"
+                        class="rounded-xl border py-2 px-1 text-center transition-all"
+                        :style="width==p.w && height==p.h
+                          ? 'background:#bc8a54;color:#fff;border-color:#8a5c36;'
+                          : 'background:#fdf8f3;color:#7a6050;border-color:#e0cdb8;'"
+                        :title="`${p.w}×${p.h}`">
+                  <div class="text-xs font-semibold leading-tight" x-text="p.label"></div>
+                  <div class="text-xs leading-tight" style="opacity:.7;" x-text="`${p.w}×${p.h}`"></div>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          {# Custom W × H #}
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold mb-1" style="color:#7a6050;">Ширина (px)</label>
+              <input type="number" x-model.number="width" min="1" max="8000" class="mgr-input text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1" style="color:#7a6050;">Высота (px)</label>
+              <input type="number" x-model.number="height" min="1" max="8000" class="mgr-input text-sm">
+            </div>
+          </div>
+
+          {# Fit mode #}
+          <div>
+            <label class="block text-xs font-semibold mb-2" style="color:#7a6050;">Режим подгонки</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <template x-for="m in fitModes" :key="m.value">
+                <button type="button"
+                        @click="fit = m.value"
+                        class="rounded-xl border py-2 px-1 text-center transition-all"
+                        :style="fit==m.value
+                          ? 'background:#bc8a54;color:#fff;border-color:#8a5c36;'
+                          : 'background:#fdf8f3;color:#7a6050;border-color:#e0cdb8;'"
+                        :title="m.desc">
+                  <div class="text-sm leading-none mb-0.5" x-text="m.icon"></div>
+                  <div class="text-xs font-semibold leading-tight" x-text="m.label"></div>
+                </button>
+              </template>
+            </div>
+            <p class="text-xs mt-1.5" style="color:#b09070;">
+              <template x-if="fit==='cover'">
+                <span>✂ Обрезать: заполняет весь прямоугольник, края обрезаются</span>
+              </template>
+              <template x-if="fit==='contain'">
+                <span>⊡ Вписать: изображение целиком, остаток заполняется фоном</span>
+              </template>
+              <template x-if="fit==='stretch'">
+                <span>↔ Растянуть: принудительно заполнить, пропорции могут нарушиться</span>
+              </template>
+            </p>
+          </div>
+
+          {# Background colour — only relevant for contain mode #}
+          <div x-show="fit === 'contain'" x-cloak>
+            <label class="block text-xs font-semibold mb-2" style="color:#7a6050;">Цвет фона</label>
+            <div class="flex items-center gap-2">
+              <input type="color" x-model="bgColor"
+                     class="w-9 h-9 rounded-lg cursor-pointer border p-0.5"
+                     style="border-color:#e0cdb8;">
+              <input type="text" x-model="bgColor" class="mgr-input text-xs font-mono flex-1"
+                     maxlength="7" placeholder="#ffffff">
+              <button type="button" @click="bgColor='#ffffff'"
+                      class="text-xs px-2 py-1.5 rounded-lg border whitespace-nowrap"
+                      style="background:#fff;color:#7a6050;border-color:#e0cdb8;">Белый</button>
+              <button type="button" @click="bgColor='#f5ede2'"
+                      class="text-xs px-2 py-1.5 rounded-lg border whitespace-nowrap"
+                      style="background:#f5ede2;color:#7a6050;border-color:#e0cdb8;">Тёплый</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {# ── Transform ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Трансформация
+        </div>
+        <div class="p-4 space-y-3">
+          <div>
+            <label class="block text-xs font-semibold mb-2" style="color:#7a6050;">Поворот</label>
+            <div class="flex gap-1.5">
+              <template x-for="deg in [0, 90, 180, 270]" :key="deg">
+                <button type="button"
+                        @click="rotate = deg"
+                        class="flex-1 py-1.5 rounded-lg border text-xs transition-all font-semibold"
+                        :style="rotate==deg
+                          ? 'background:#bc8a54;color:#fff;border-color:#8a5c36;'
+                          : 'background:#fdf8f3;color:#7a6050;border-color:#e0cdb8;'">
+                  <span x-text="deg + '°'"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" x-model="flipH" class="mgr-checkbox">
+            <span class="text-xs font-semibold" style="color:#7a6050;">↔ Зеркально по горизонтали</span>
+          </label>
+        </div>
+      </div>
+
+      {# ── Colour corrections ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b flex items-center justify-between"
+             style="background:#fdf3e3;border-color:#e8ddd1;">
+          <span class="text-xs font-bold uppercase tracking-wide flex items-center gap-2" style="color:#7a5c36;">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+            </svg>
+            Коррекция цвета
+          </span>
+          <button type="button" @click="resetCorrections()"
+                  class="text-xs hover:underline transition-colors"
+                  style="color:#bc8a54;">Сбросить</button>
+        </div>
+        <div class="p-4 space-y-5">
+          <template x-for="ctrl in corrections" :key="ctrl.key">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-semibold" style="color:#7a6050;" x-text="ctrl.label"></label>
+                <span class="text-xs font-mono px-1.5 py-0.5 rounded-md"
+                      style="background:#f0ece0;color:#6a4c2c;"
+                      x-text="parseFloat($data[ctrl.key]).toFixed(2)"></span>
+              </div>
+              <input type="range"
+                     :min="ctrl.min" :max="ctrl.max" :step="ctrl.step"
+                     x-model.number="$data[ctrl.key]"
+                     class="w-full h-2 rounded-full cursor-pointer"
+                     style="accent-color:#bc8a54;">
+              <div class="flex justify-between text-xs mt-1" style="color:#c8b098;">
+                <span x-text="ctrl.minLabel"></span>
+                <span>норма (1.0)</span>
+                <span x-text="ctrl.maxLabel"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      {# ── Output format ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+          </svg>
+          Формат сохранения
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="flex gap-1.5">
+            <template x-for="f in formats" :key="f.value">
+              <button type="button"
+                      @click="format = f.value"
+                      class="flex-1 py-2 rounded-xl border text-xs font-bold transition-all"
+                      :style="format==f.value
+                        ? 'background:#bc8a54;color:#fff;border-color:#8a5c36;'
+                        : 'background:#fdf8f3;color:#7a6050;border-color:#e0cdb8;'">
+                <div x-text="f.label"></div>
+                <div class="font-normal opacity-70 text-xs" x-text="f.hint"></div>
+              </button>
+            </template>
+          </div>
+
+          <div x-show="format !== 'png'" x-cloak>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-semibold" style="color:#7a6050;">Качество сжатия</label>
+              <span class="text-xs font-mono px-1.5 py-0.5 rounded-md"
+                    style="background:#f0ece0;color:#6a4c2c;"
+                    x-text="quality + '%'"></span>
+            </div>
+            <input type="range" min="10" max="100" step="5" x-model.number="quality"
+                   class="w-full h-2 rounded-full cursor-pointer" style="accent-color:#bc8a54;">
+            <div class="flex justify-between text-xs mt-1" style="color:#c8b098;">
+              <span>меньше файл</span><span>лучше качество</span>
+            </div>
+          </div>
+
+          <div x-show="format === 'png'" x-cloak
+               class="text-xs rounded-xl px-3 py-2.5"
+               style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;">
+            PNG рекомендован для графики, таблички, логотипов — сохраняет прозрачность и острые края
+          </div>
+        </div>
+      </div>
+
+    </div>
+    {# ════════════════════════ END LEFT ════════════════════════ #}
+
+    {# ════════════════════════ RIGHT: PREVIEW + ACTIONS ════════════════════════ #}
+    <div class="space-y-4 xl:sticky xl:top-24">
+
+      {# ── Preview dual panel ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Предпросмотр
+        </div>
+        <div class="p-4">
+
+          {# Empty state #}
+          <div x-show="!originalPreview"
+               class="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed"
+               style="border-color:#e0cdb8;background:#fdf8f3;">
+            <svg class="w-14 h-14 mb-3 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-sm font-medium" style="color:#b09070;">Загрузите изображение слева</p>
+            <p class="text-xs mt-1" style="color:#c8b8a8;">Поддерживается перетаскивание файла</p>
+          </div>
+
+          {# Side-by-side before / after #}
+          <div x-show="originalPreview" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {# Original #}
+            <div>
+              <p class="text-xs font-bold mb-2 flex items-center gap-1.5" style="color:#9a7860;">
+                <span class="w-2 h-2 rounded-full inline-block" style="background:#9a7860;"></span>
+                ОРИГИНАЛ
+              </p>
+              <div class="rounded-xl overflow-hidden border flex items-center justify-center"
+                   style="min-height:180px;border-color:#e0cdb8;"
+                   :style='`background:repeating-conic-gradient(#ddd 0% 25%, #faf8f5 0% 50%) 0 0/16px 16px;`'>
+                <img :src="originalPreview" alt="Оригинал"
+                     class="max-w-full max-h-72 object-contain block"
+                     style="image-rendering:auto;">
+              </div>
+              <p class="text-xs mt-1 text-center" style="color:#b09070;"
+                 x-text="origWidth ? `${origWidth}×${origHeight} px` : ''"></p>
+            </div>
+
+            {# Result #}
+            <div>
+              <p class="text-xs font-bold mb-2 flex items-center gap-1.5" style="color:#2d8a4e;">
+                <span class="w-2 h-2 rounded-full inline-block" style="background:#2d8a4e;"></span>
+                РЕЗУЛЬТАТ
+              </p>
+              <div x-show="!processedPreview"
+                   class="rounded-xl border flex flex-col items-center justify-center border-dashed"
+                   style="min-height:180px;border-color:#e0cdb8;background:#fdf8f3;">
+                <p class="text-xs" style="color:#c8b8a8;">Нажмите «Обработать»</p>
+              </div>
+              <div x-show="processedPreview" x-cloak>
+                <div class="rounded-xl overflow-hidden border flex items-center justify-center"
+                     style="min-height:180px;border-color:#e0cdb8;"
+                     :style='`background:repeating-conic-gradient(#ddd 0% 25%, #faf8f5 0% 50%) 0 0/16px 16px;`'>
+                  <img :src="processedPreview" alt="Результат"
+                       class="max-w-full max-h-72 object-contain block">
+                </div>
+                <p class="text-xs mt-1 text-center" style="color:#2d8a4e;"
+                   x-text="resultWidth ? `${resultWidth}×${resultHeight} px · ${resultSizeKb} КБ` : ''"></p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {# ── Process button + status ── #}
+      <div class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="p-4 space-y-3">
+
+          {# Status message #}
+          <div x-show="status" x-cloak
+               class="rounded-xl px-4 py-3 text-sm flex items-start gap-2"
+               :style="status?.type === 'error'
+                 ? 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;'
+                 : 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;'">
+            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    :d="status?.type === 'error'
+                      ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                      : 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'"/>
+            </svg>
+            <span x-text="status?.message"></span>
+          </div>
+
+          {# Process #}
+          <button type="button"
+                  @click="process()"
+                  :disabled="processing || !originalPreview"
+                  class="w-full py-3 rounded-xl font-bold text-sm text-white transition-all"
+                  :style="processing || !originalPreview
+                    ? 'opacity:.5;cursor:not-allowed;background:#bc8a54;'
+                    : 'background:linear-gradient(135deg,#bc8a54,#8a5c36);box-shadow:0 4px 14px rgba(188,138,84,.35);'">
+            <span x-show="!processing" class="flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              Обработать изображение
+            </span>
+            <span x-show="processing" x-cloak class="flex items-center justify-center gap-2">
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Обработка...
+            </span>
+          </button>
+
+        </div>
+      </div>
+
+      {# ── Save / Apply — appears after processing ── #}
+      <div x-show="processedPreview" x-cloak
+           class="rounded-2xl border overflow-hidden" style="background:#fffcf8;border-color:#e8ddd1;">
+        <div class="px-4 py-2.5 border-b text-xs font-bold uppercase tracking-wide flex items-center gap-2"
+             style="background:#fdf3e3;border-color:#e8ddd1;color:#7a5c36;">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+          </svg>
+          Сохранить результат
+        </div>
+        <div class="p-4 space-y-4">
+
+          {# Download #}
+          <button type="button"
+                  @click="downloadResult()"
+                  class="w-full py-2.5 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:shadow-md"
+                  style="background:#fdf8f3;color:#3d3028;border-color:#e0cdb8;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Скачать файл (<span x-text="format.toUpperCase()"></span>)
+          </button>
+
+          {# Apply to product or option #}
+          <div class="border-t pt-4" style="border-color:#f0e6d8;">
+            <label class="block text-xs font-semibold mb-2" style="color:#7a6050;">
+              Применить к товару или опции
+            </label>
+            <select x-model="applyTarget" class="mgr-input text-sm mb-3">
+              <option value="">— Выберите цель —</option>
+              <optgroup label="Товары (основное изображение)">
+                {% for p in products %}
+                <option value="product:{{ p.slug }}">{{ p.name }}</option>
+                {% endfor %}
+              </optgroup>
+              {% if options %}
+              <optgroup label="Опции товаров (цвет / вариант)">
+                {% for opt in options %}
+                <option value="option:{{ opt.id }}">
+                  {{ opt.group.product.name }} › {{ opt.group.name }} › {{ opt.name }}
+                </option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+            </select>
+
+            <button type="button"
+                    @click="applyToTarget()"
+                    :disabled="applying || !applyTarget"
+                    class="w-full py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+                    :style="applying || !applyTarget
+                      ? 'opacity:.5;cursor:not-allowed;background:#4ade80;'
+                      : 'background:linear-gradient(135deg,#4ade80,#16a34a);box-shadow:0 3px 10px rgba(22,163,74,.3);'">
+              <span x-show="!applying" class="flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Применить к выбранному
+              </span>
+              <span x-show="applying" x-cloak class="flex items-center justify-center gap-2">
+                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Сохранение...
+              </span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+    {# ════════════════════════ END RIGHT ════════════════════════ #}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block manager_scripts %}
+<script>
+function studio() {
+  return {
+    /* ── UI state ──────────────────────────────────────────── */
+    dragging:         false,
+    processing:       false,
+    applying:         false,
+    status:           null,     // { type: 'success'|'error', message: '' }
+
+    /* ── File / preview data ───────────────────────────────── */
+    originalFile:     null,     // File object for first upload
+    originalPreview:  null,     // data-URI shown client-side
+    processedPreview: null,     // data-URI returned by server
+    origName:         '',
+    origWidth:        null,
+    origHeight:       null,
+    resultWidth:      null,
+    resultHeight:     null,
+    resultSizeKb:     null,
+
+    /* ── Settings ──────────────────────────────────────────── */
+    width:      600,
+    height:     400,
+    fit:        'cover',
+    bgColor:    '#ffffff',
+    format:     'png',
+    quality:    90,
+    brightness: 1.0,
+    contrast:   1.0,
+    sharpness:  1.0,
+    rotate:     0,
+    flipH:      false,
+    applyTarget: '',
+
+    /* ── Static data ───────────────────────────────────────── */
+    presets: [
+      { label: 'Табличка',  w: 600, h: 400 },
+      { label: 'Инфо',      w: 800, h: 300 },
+      { label: 'Кубок',     w: 500, h: 600 },
+      { label: 'Медаль',    w: 400, h: 520 },
+      { label: 'Розетка',   w: 440, h: 440 },
+      { label: 'Значок',    w: 360, h: 360 },
+      { label: 'Квадрат',   w: 600, h: 600 },
+      { label: 'HD',        w: 800, h: 800 },
+      { label: 'Баннер',    w: 1200, h: 400 },
+    ],
+
+    fitModes: [
+      { value: 'cover',   label: 'Обрезать',   icon: '✂',  desc: 'Заполнить, обрезав края' },
+      { value: 'contain', label: 'Вписать',    icon: '⊡',  desc: 'Вписать целиком с фоном' },
+      { value: 'stretch', label: 'Растянуть',  icon: '↔',  desc: 'Принудительное растяжение' },
+    ],
+
+    formats: [
+      { value: 'png',  label: 'PNG',  hint: 'прозрачность' },
+      { value: 'jpeg', label: 'JPEG', hint: 'фото / размер' },
+      { value: 'webp', label: 'WebP', hint: 'современный' },
+    ],
+
+    corrections: [
+      { key: 'brightness', label: 'Яркость',  min: 0.1, max: 2.5, step: 0.05, minLabel: 'темнее',  maxLabel: 'светлее' },
+      { key: 'contrast',   label: 'Контраст', min: 0.1, max: 2.5, step: 0.05, minLabel: 'мягче',   maxLabel: 'резче'   },
+      { key: 'sharpness',  label: 'Чёткость', min: 0.0, max: 3.0, step: 0.1,  minLabel: 'размыть', maxLabel: 'чётче'   },
+    ],
+
+    /* ── File handling ─────────────────────────────────────── */
+    handleFileInput(e) {
+      const file = e.target.files[0];
+      if (file) this.handleFile(file);
+      e.target.value = '';     // allow re-selecting same file
+    },
+
+    handleDrop(e) {
+      this.dragging = false;
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) this.handleFile(file);
+    },
+
+    handleFile(file) {
+      this.originalFile     = file;
+      this.origName         = file.name;
+      this.processedPreview = null;
+      this.status           = null;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        this.originalPreview = ev.target.result;
+        const img = new Image();
+        img.onload = () => { this.origWidth = img.width; this.origHeight = img.height; };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    },
+
+    /* ── Controls helpers ──────────────────────────────────── */
+    applyPreset(w, h) { this.width = w; this.height = h; },
+
+    resetCorrections() { this.brightness = 1.0; this.contrast = 1.0; this.sharpness = 1.0; },
+
+    _csrf() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    },
+
+    /* ── Core: process via server ──────────────────────────── */
+    async process() {
+      if (!this.originalPreview) {
+        this.status = { type: 'error', message: 'Сначала загрузите изображение' };
+        return;
+      }
+      this.processing = true;
+      this.status = null;
+
+      const fd = new FormData();
+      if (this.originalFile) fd.append('image', this.originalFile);
+      fd.append('width',      this.width);
+      fd.append('height',     this.height);
+      fd.append('fit',        this.fit);
+      fd.append('bg_color',   this.bgColor);
+      fd.append('format',     this.format);
+      fd.append('quality',    this.quality);
+      fd.append('brightness', this.brightness);
+      fd.append('contrast',   this.contrast);
+      fd.append('sharpness',  this.sharpness);
+      fd.append('rotate',     this.rotate);
+      fd.append('flip_h',     this.flipH ? '1' : '0');
+
+      try {
+        const resp = await fetch('{% url "manager:image_studio_process" %}', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': this._csrf() },
+          body: fd,
+        });
+        const data = await resp.json();
+        if (data.error) {
+          this.status = { type: 'error', message: data.error };
+        } else {
+          this.processedPreview = data.preview;
+          this.resultWidth      = data.width;
+          this.resultHeight     = data.height;
+          this.resultSizeKb     = data.size_kb;
+          this.originalFile     = null;   // next call reuses session original
+          this.status = { type: 'success',
+            message: `✓ Готово: ${data.width}×${data.height} px, ${data.size_kb} КБ` };
+        }
+      } catch {
+        this.status = { type: 'error', message: 'Ошибка соединения с сервером' };
+      } finally {
+        this.processing = false;
+      }
+    },
+
+    /* ── Download processed image locally ─────────────────── */
+    downloadResult() {
+      if (!this.processedPreview) return;
+      const a = document.createElement('a');
+      a.href     = this.processedPreview;
+      a.download = `studio-result.${this.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    },
+
+    /* ── Apply to product / option via server ──────────────── */
+    async applyToTarget() {
+      if (!this.processedPreview) {
+        this.status = { type: 'error', message: 'Сначала обработайте изображение' };
+        return;
+      }
+      if (!this.applyTarget) {
+        this.status = { type: 'error', message: 'Выберите товар или опцию' };
+        return;
+      }
+      this.applying = true;
+      this.status   = null;
+
+      const fd = new FormData();
+      fd.append('target', this.applyTarget);
+
+      try {
+        const resp = await fetch('{% url "manager:image_studio_apply" %}', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': this._csrf() },
+          body: fd,
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          this.status = { type: 'success', message: data.message };
+        } else {
+          this.status = { type: 'error', message: data.error || 'Ошибка сохранения' };
+        }
+      } catch {
+        this.status = { type: 'error', message: 'Ошибка соединения' };
+      } finally {
+        this.applying = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

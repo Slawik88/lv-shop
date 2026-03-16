@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto">
+
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+         style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+      </svg>
+    </div>
+    <h1 class="text-2xl font-bold" style="color:#3d3028;">Создать аккаунт</h1>
+    <p class="text-sm mt-1" style="color:#9a7860;">Зарегистрируйтесь для отслеживания заказов</p>
+  </div>
+
+  <form method="post" class="rounded-2xl p-6 space-y-5"
+        style="background:#fffcf8; border:1px solid #e8ddd1; box-shadow:0 4px 16px rgba(90,59,36,.08);">
+    {% csrf_token %}
+
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="block text-sm font-medium mb-1.5" style="color:#5a3b24;">
+        {{ field.label }}
+        {% if field.field.required %}<span style="color:#c0392b;">*</span>{% endif %}
+      </label>
+      <input type="{% if 'password' in field.name %}password{% elif 'email' in field.name %}email{% else %}text{% endif %}"
+             id="{{ field.id_for_label }}"
+             name="{{ field.name }}"
+             value="{{ field.value|default:'' }}"
+             {% if field.field.required %}required{% endif %}
+             class="w-full rounded-xl px-4 py-2.5 text-sm"
+             style="border:1px solid {% if field.errors %}#e74c3c{% else %}#e0cdb8{% endif %}; background:#fdf8f3; color:#3d3028;" />
+      {% if field.help_text %}
+      <p class="text-xs mt-1" style="color:#b09070;">{{ field.help_text }}</p>
+      {% endif %}
+      {% if field.errors %}
+      <p class="text-xs mt-1" style="color:#e74c3c;">{{ field.errors.0 }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <button type="submit"
+            class="w-full py-3 px-6 rounded-xl font-semibold text-white text-base shadow-md hover:shadow-lg transition-shadow"
+            style="background:linear-gradient(135deg,#bc8a54,#8a5c36);">
+      Зарегистрироваться
+    </button>
+  </form>
+
+  <p class="text-center text-sm mt-6" style="color:#9a7860;">
+    Уже есть аккаунт?
+    <a href="{% url 'orders:login' %}" class="font-medium hover:underline" style="color:#bc8a54;">Войти</a>
+  </p>
+
+</div>
+{% endblock %}

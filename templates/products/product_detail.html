@@ -21,7 +21,8 @@
   {# ============================== LEFT: WYSIWYG PREVIEW ============================== #}
   <div class="sticky top-24 self-start space-y-4">
 
-    {# Preview card #}
+    {% if product.has_configurator %}
+    {# Preview card — SVG WYSIWYG editor #}
     <div class="rounded-2xl overflow-hidden shadow-lg border" style="background:#fffcf8;border-color:#e8ddd1;">
       {# Toolbar #}
       <div class="flex items-center justify-between px-4 py-2.5 border-b" style="background:#fdf3e3;border-color:#e8ddd1;">
@@ -116,6 +117,27 @@
         ↩ Сбросить позиции текста
       </button>
     </div>
+
+    {% else %}
+    {# Static image panel for products without a configurator template #}
+    <div class="rounded-2xl overflow-hidden shadow-lg border" style="background:#fffcf8;border-color:#e8ddd1;">
+      {% if product.image %}
+      <img src="{{ product.image.url }}" alt="{{ product.name }}"
+           class="w-full h-auto object-contain"
+           style="max-height:480px;display:block;">
+      {% else %}
+      <div class="flex items-center justify-center" style="min-height:320px;background:#f5ede2;">
+        <div class="text-center" style="color:#b09070;">
+          <svg class="w-16 h-16 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <p class="text-sm">Фотография товара</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
 
     {# Price display (HTMX partial) #}
     <div class="rounded-xl shadow border p-4" style="background:#fffcf8;border-color:#e8ddd1;">
@@ -326,13 +348,15 @@
       </div>
       {% endfor %}
 
-      {# ---- Text Fields (dynamic from DB) ---- #}
+      {# ---- Text Fields (dynamic from DB) — EXTENDED EDITOR ---- #}
       {% for tf in product.text_fields.all %}
-      <div class="mb-5">
-        <label for="text_{{ tf.id }}" class="block text-sm font-semibold mb-1.5" style="color:#5a3b24;">
+      <div class="mb-6 p-4 rounded-xl border" style="background:#fdfaf6;border-color:#e8ddd1;">
+        <label for="text_{{ tf.id }}" class="block text-sm font-semibold mb-2" style="color:#5a3b24;">
           {{ tf.label }}
           {% if tf.is_required %}<span style="color:#c0392b;">*</span>{% endif %}
         </label>
+        
+        {# Text input #}
         <input type="text"
                id="text_{{ tf.id }}"
                name="text_{{ tf.id }}"
@@ -340,10 +364,55 @@
                placeholder="{{ tf.placeholder }}"
                {% if tf.is_required %}required{% endif %}
                class="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 transition"
-               style="background:#fdf8f3;border-color:#e0cdb8;color:#3d3028;"
-               @input.debounce.500ms="updatePreview()"
+               style="background:#fffcf8;border-color:#e0cdb8;color:#3d3028;"
+               @input.debounce.400ms="updatePreview()"
         />
-        <p class="text-xs mt-1" style="color:#b09070;">Макс. {{ tf.max_length }} символов</p>
+        
+        {# Style toolbar row #}
+        <div class="flex flex-wrap items-center gap-3 mt-3">
+          {# Color picker #}
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-medium" style="color:#9a7860;">Цвет:</span>
+            <input type="color"
+                   name="color_{{ tf.id }}"
+                   value="{{ tf.preview_color|default:'#000000' }}"
+                   class="w-7 h-7 rounded-lg cursor-pointer border-0 p-0"
+                   style="background:transparent;"
+                   @input.debounce.200ms="updatePreview()" />
+          </div>
+          
+          {# Bold toggle #}
+          <label class="flex items-center gap-1 cursor-pointer select-none">
+            <input type="checkbox" name="bold_{{ tf.id }}" value="1" class="sr-only peer"
+                   @change="updatePreview()" />
+            <span class="px-2 py-1 rounded-lg text-xs font-bold border transition-all peer-checked:bg-amber-100 peer-checked:border-amber-400"
+                  style="border-color:#e0cdb8;color:#5a3b24;">B</span>
+          </label>
+          
+          {# Italic toggle #}
+          <label class="flex items-center gap-1 cursor-pointer select-none">
+            <input type="checkbox" name="italic_{{ tf.id }}" value="1" class="sr-only peer"
+                   @change="updatePreview()" />
+            <span class="px-2 py-1 rounded-lg text-xs font-bold italic border transition-all peer-checked:bg-amber-100 peer-checked:border-amber-400"
+                  style="border-color:#e0cdb8;color:#5a3b24;">I</span>
+          </label>
+          
+          {# Font size slider #}
+          <div class="flex items-center gap-2 flex-1 min-w-[120px]">
+            <span class="text-xs shrink-0 font-medium" style="color:#9a7860;">Размер:</span>
+            <input type="range"
+                   name="size_{{ tf.id }}"
+                   min="8" max="120" step="1"
+                   value="{{ tf.preview_font_size|floatformat:0 }}"
+                   class="flex-1 cursor-pointer accent-amber-700"
+                   oninput="this.nextElementSibling.textContent = this.value + 'px'"
+                   @input.debounce.250ms="updatePreview()" />
+            <span class="text-xs font-mono font-semibold rounded-md px-1.5 py-0.5 shrink-0"
+                  style="background:#fdf3e3;color:#8a5c36;min-width:2.5rem;text-align:center;">{{ tf.preview_font_size|floatformat:0 }}px</span>
+          </div>
+        </div>
+        
+        <p class="text-xs mt-2" style="color:#b09070;">Макс. {{ tf.max_length }} символов · Перетащите текст на превью для позиционирования</p>
       </div>
       {% endfor %}
 
@@ -417,6 +486,9 @@ function configurator() {
           {% endif %}
         {% endfor %}
       {% endfor %}
+
+      // Skip SVG-editor setup when there is no configurator template on this product
+      if (!document.getElementById('svg-wrapper')) return;
 
       try {
         const resp = await fetch('{% url "configurator:get_fonts" %}');

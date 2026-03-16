@@ -51,11 +51,7 @@
       {% for item in order.items.all %}
       <div class="px-6 py-3 flex justify-between text-sm" style="border-color:#f0e6d8;">
         <span style="color:#5a3b24;">{{ item.product_name }} <span style="color:#b09070;">× {{ item.quantity }}</span></span>
-        <span class="font-semibold" style="color:#3d3028;">{{ item.price }} ₽</span>
-      </div>
-      {% endfor %}
-    </div>
-
+        <span class="font-semibold" style="color:#3d3028;">{{ item.line_total }} ₽</span>
     {# Total #}
     <div class="px-6 py-4 flex justify-between items-center border-t" style="border-color:#e8ddd1;background:#fdf3e3;">
       <span class="font-semibold text-sm" style="color:#5a3b24;">Итого:</span>

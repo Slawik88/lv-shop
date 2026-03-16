@@ -23,7 +23,7 @@ def category_detail(request, slug):
 
 def product_detail(request, slug):
     product = get_object_or_404(
-        Product.objects.prefetch_related(
+        Product.objects.select_related('configurator_template').prefetch_related(
             'attribute_groups__options',
             'text_fields',
             'sizes',

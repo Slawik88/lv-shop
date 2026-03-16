@@ -27,7 +27,11 @@ def preview_svg(request, product_slug):
         slug=product_slug,
         is_active=True,
     )
-    template = get_object_or_404(ConfiguratorTemplate, product=product)
+    template = ConfiguratorTemplate.objects.filter(product=product).first()
+    if template is None:
+        # Product has no configurator template — return a placeholder SVG so the
+        # frontend never gets a 404. Show the product image if one exists.
+        return _placeholder_svg(product, request)
     text_fields = product.text_fields.all()
     layers = template.layers_config or {}
 
@@ -123,33 +127,46 @@ def preview_svg(request, product_slug):
             f'preserveAspectRatio="xMidYMid meet"/>'
         )
 
-    # Grid overlay (for WYSIWYG editor mode)
+    # Grid overlay (for WYSIWYG editor mode) — now in CENTIMETERS
     if request.GET.get('show_grid') == '1':
-        step = 50  # pixels per grid cell
-        grid_color = 'rgba(100,80,60,0.15)'
-        # Vertical lines
-        x = step
-        while x < width:
-            svg_parts.append(f'<line x1="{x}" y1="0" x2="{x}" y2="{height}" stroke="{grid_color}" stroke-width="1"/>')
-            x += step
-        # Horizontal lines
-        y = step
-        while y < height:
-            svg_parts.append(f'<line x1="0" y1="{y}" x2="{width}" y2="{y}" stroke="{grid_color}" stroke-width="1"/>')
-            y += step
+        # Calculate pixels per centimeter based on real dimensions
+        real_w_cm = float(template.real_width_cm) if template.real_width_cm else 20.0
+        real_h_cm = float(template.real_height_cm) if template.real_height_cm else 15.0
+        px_per_cm_x = width / real_w_cm
+        px_per_cm_y = height / real_h_cm
+        
+        grid_color = 'rgba(100,80,60,0.12)'
+        tick_color = 'rgba(100,80,60,0.35)'
+        
+        # Draw centimeter grid lines (vertical)
+        for cm in range(1, int(real_w_cm) + 1):
+            x = cm * px_per_cm_x
+            if x < width:
+                svg_parts.append(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{height}" stroke="{grid_color}" stroke-width="1"/>')
+                # Label every 5 cm
+                if cm % 5 == 0:
+                    svg_parts.append(f'<text x="{x+3}" y="12" font-size="9" fill="{tick_color}" font-family="monospace">{cm}cm</text>')
+        
+        # Draw centimeter grid lines (horizontal)
+        for cm in range(1, int(real_h_cm) + 1):
+            y = cm * px_per_cm_y
+            if y < height:
+                svg_parts.append(f'<line x1="0" y1="{y:.1f}" x2="{width}" y2="{y:.1f}" stroke="{grid_color}" stroke-width="1"/>')
+                # Label every 5 cm
+                if cm % 5 == 0:
+                    svg_parts.append(f'<text x="3" y="{y-3}" font-size="9" fill="{tick_color}" font-family="monospace">{cm}cm</text>')
+        
         # Center crosshair
-        cx, cy = width // 2, height // 2
-        svg_parts.append(f'<line x1="{cx}" y1="0" x2="{cx}" y2="{height}" stroke="rgba(180,120,80,.35)" stroke-width="1" stroke-dasharray="4 3"/>')
-        svg_parts.append(f'<line x1="0" y1="{cy}" x2="{width}" y2="{cy}" stroke="rgba(180,120,80,.35)" stroke-width="1" stroke-dasharray="4 3"/>')
-        # Ruler tick labels
-        x = step
-        while x < width:
-            svg_parts.append(f'<text x="{x+2}" y="10" font-size="8" fill="rgba(100,80,60,.4)" font-family="monospace">{x}</text>')
-            x += step
-        y = step
-        while y < height:
-            svg_parts.append(f'<text x="2" y="{y-2}" font-size="8" fill="rgba(100,80,60,.4)" font-family="monospace">{y}</text>')
-            y += step
+        cx, cy = width / 2, height / 2
+        svg_parts.append(f'<line x1="{cx:.1f}" y1="0" x2="{cx:.1f}" y2="{height}" stroke="rgba(188,138,84,.3)" stroke-width="1" stroke-dasharray="4 3"/>')
+        svg_parts.append(f'<line x1="0" y1="{cy:.1f}" x2="{width}" y2="{cy:.1f}" stroke="rgba(188,138,84,.3)" stroke-width="1" stroke-dasharray="4 3"/>')
+        
+        # Show dimensions badge
+        svg_parts.append(
+            f'<rect x="{width-80}" y="{height-22}" width="75" height="18" rx="4" fill="rgba(255,252,248,.9)"/>'
+            f'<text x="{width-42}" y="{height-10}" font-size="10" fill="#bc8a54" font-family="monospace" text-anchor="middle">'
+            f'{real_w_cm:.0f}×{real_h_cm:.0f} cm</text>'
+        )
 
     # Global font override
     font_override = request.GET.get('font', '')
@@ -176,24 +193,28 @@ def preview_svg(request, product_slug):
             except (ValueError, TypeError):
                 pass
 
+        # Per-field font size override from customer slider
+        size_override = request.GET.get(f'size_{tf.id}')
+        try:
+            field_font_size = max(6.0, min(200.0, float(size_override))) if size_override else tf.preview_font_size
+        except (ValueError, TypeError):
+            field_font_size = tf.preview_font_size
+
+        # Bold/italic style overrides
+        font_weight = 'bold' if request.GET.get(f'bold_{tf.id}') == '1' else 'normal'
+        font_style = 'italic' if request.GET.get(f'italic_{tf.id}') == '1' else 'normal'
+
         escaped = _escape_svg(text_value)
-        # Build the text element
-        if tf.preview_max_width and text_value:
-            text_inner = (
-                f'<tspan textLength="{tf.preview_max_width}" '
-                f'lengthAdjust="spacingAndGlyphs">{escaped}</tspan>'
-            )
-        else:
-            text_inner = escaped
 
         svg_parts.append(
             f'<text data-field-id="{tf.id}" '
             f'x="{pos_x}" y="{pos_y}" '
-            f'font-family="{_escape_svg_attr(font_family)}" font-size="{tf.preview_font_size}" '
+            f'font-family="{_escape_svg_attr(font_family)}" font-size="{field_font_size}" '
+            f'font-weight="{font_weight}" font-style="{font_style}" '
             f'fill="{_escape_svg_attr(color)}" text-anchor="{_escape_svg_attr(tf.preview_text_anchor)}" '
             f'dominant-baseline="middle" '
             f'style="cursor:move;user-select:none;">'
-            f'{text_inner}</text>'
+            f'{escaped}</text>'
         )
 
     svg_parts.append('</svg>')
@@ -299,6 +320,32 @@ def save_configuration(request, product_slug):
         'id': str(saved.id),
         'price': str(saved.calculated_price),
     })
+
+
+def _placeholder_svg(product, request):
+    """Return a minimal static SVG for products that have no ConfiguratorTemplate."""
+    width, height = 600, 400
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}" style="display:block;max-width:100%;height:auto;">',
+        f'<rect width="{width}" height="{height}" fill="#f5ede2" rx="12"/>',
+    ]
+    if product.image and product.image.name:
+        img_url = request.build_absolute_uri(product.image.url)
+        parts.append(
+            f'<image href="{_escape_svg_attr(img_url)}" '
+            f'width="{width}" height="{height}" preserveAspectRatio="xMidYMid meet" '
+            f'clip-path="inset(0 round 12px)"/>'
+        )
+    else:
+        escaped_name = _escape_svg(product.name)
+        parts.append(
+            f'<text x="{width // 2}" y="{height // 2}" font-family="Arial,sans-serif" '
+            f'font-size="22" fill="#9a7860" text-anchor="middle" dominant-baseline="middle">'
+            f'{escaped_name}</text>'
+        )
+    parts.append('</svg>')
+    return HttpResponse('\n'.join(parts), content_type='image/svg+xml')
 
 
 def _escape_svg(text: str) -> str:

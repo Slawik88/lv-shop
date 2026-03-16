@@ -220,20 +220,27 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--reset', action='store_true',
                             help='Delete all products/categories before seeding')
+        parser.add_argument('--clear', action='store_true',
+                            help='Delete all products/categories and exit (no seeding)')
+
+    def _clear_all(self):
+        from configurator.models import SavedConfiguration
+        SavedConfiguration.objects.all().delete()
+        ConfiguratorTemplate.objects.all().delete()
+        TextFieldConfig.objects.all().delete()
+        AttributeOption.objects.all().delete()
+        AttributeGroup.objects.all().delete()
+        ProductSize.objects.all().delete()
+        Product.objects.all().delete()
+        Category.objects.all().delete()
 
     def handle(self, *args, **options):
-        if options['reset']:
-            self.stdout.write(self.style.WARNING('Resetting…'))
-            from configurator.models import SavedConfiguration
-            SavedConfiguration.objects.all().delete()
-            ConfiguratorTemplate.objects.all().delete()
-            TextFieldConfig.objects.all().delete()
-            AttributeOption.objects.all().delete()
-            AttributeGroup.objects.all().delete()
-            ProductSize.objects.all().delete()
-            Product.objects.all().delete()
-            Category.objects.all().delete()
+        if options['reset'] or options['clear']:
+            self.stdout.write(self.style.WARNING('Resetting...'))
+            self._clear_all()
             self.stdout.write(self.style.SUCCESS('Reset complete.'))
+        if options['clear']:
+            return  # exit without seeding
 
         for d in ('products', 'categories', 'options'):
             os.makedirs(os.path.join(settings.MEDIA_ROOT, d), exist_ok=True)
@@ -248,7 +255,7 @@ class Command(BaseCommand):
         self._medal(roz)
         self._rozetka(roz)
         self._znachok(roz)
-        self.stdout.write(self.style.SUCCESS('\n✓ Done!'))
+        self.stdout.write(self.style.SUCCESS('\nDone!'))
 
     # helpers
     def _img(self, obj, name, data):

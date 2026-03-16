@@ -33,7 +33,7 @@ class Order(models.Model):
         return f'Заказ #{str(self.id)[:8]} — {self.customer_name}'
 
     def recalculate_total(self):
-        self.total_price = sum(item.price for item in self.items.all())
+        self.total_price = sum(item.price * item.quantity for item in self.items.all())
         self.save(update_fields=['total_price'])
 
 

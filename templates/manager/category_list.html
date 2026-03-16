@@ -31,7 +31,7 @@
           <a href="{{ cat.get_absolute_url }}" target="_blank" class="hover:underline" style="color:#3d3028;">{{ cat.name }}</a>
           {% if cat.description %}<p class="text-xs font-normal mt-0.5" style="color:#b09070;">{{ cat.description|truncatechars:60 }}</p>{% endif %}
         </td>
-        <td class="px-5 py-3 text-center" style="color:#7a6050;">{{ cat.products.count }}</td>
+        <td class="px-5 py-3 text-center" style="color:#7a6050;">{{ cat.products_count }}</td>
         <td class="px-5 py-3 text-center">
           {% if cat.is_active %}
             <span class="text-xs px-2 py-0.5 rounded-full" style="background:#ecfdf5;color:#166534;">Активна</span>

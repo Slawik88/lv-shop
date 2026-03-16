@@ -24,6 +24,16 @@ class ConfiguratorTemplate(models.Model):
     width = models.PositiveIntegerField('Ширина SVG (px)', default=600)
     height = models.PositiveIntegerField('Высота SVG (px)', default=400)
 
+    # Real-world dimensions for accurate ruler/scale display
+    real_width_cm = models.DecimalField(
+        'Реальная ширина (см)', max_digits=8, decimal_places=2, default=20,
+        help_text='Настоящая ширина изделия в сантиметрах для отображения линейки',
+    )
+    real_height_cm = models.DecimalField(
+        'Реальная высота (см)', max_digits=8, decimal_places=2, default=15,
+        help_text='Настоящая высота изделия в сантиметрах для отображения линейки',
+    )
+
     # JSON layer configuration — fully flexible
     layers_config = models.JSONField(
         'Конфигурация слоёв', default=dict, blank=True,

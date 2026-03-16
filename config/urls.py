@@ -3,6 +3,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+# ── Русификация Django-admin ──────────────────────────────────────────────
+admin.site.site_header  = 'LV Shop — Администрирование'
+admin.site.site_title   = 'LV Shop'
+admin.site.index_title  = 'Панель управления сайтом'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('manager/', include('manager.urls', namespace='manager')),
